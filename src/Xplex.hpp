@@ -6,7 +6,7 @@ namespace Xplex {
         protected:
         const Model *model;
         uint iterations;
-        bool verbose;
+        bool verbose, phase1;
         MatrixXd A_B_m1; // aka B_^{-1}
         VectorXd xc_b; // Values of basic variables = A_B_m1*b, same indexing as basic_vars
         std::vector<uint> basic_vars; // where j=basic_vars[i] points to model->variables[j]
@@ -15,7 +15,8 @@ namespace Xplex {
         void revised_simplex();
 
         public:
-        Xplex(const Model *model) : model(model), iterations(0), verbose(false) {}
+        Xplex(Model *model);
+        Xplex(const Model *model);
 
         void solve();
 
@@ -23,5 +24,8 @@ namespace Xplex {
         inline size_t getNonBasisSize() const { return model->variables.size() - getBasisSize(); } // aka nn
         inline bool isVerbose() const { return verbose; }
         inline void setVerbose(bool verb) { verbose = verb; }
+
+        double getObjValue() const;
+        double getValue(const Variable& v) const;
     };
 }

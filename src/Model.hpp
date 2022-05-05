@@ -1,46 +1,48 @@
 #pragma once
-#include <Eigen/Dense>
 #include <string>
 #include <vector>
+#include "Variable.hpp"
+#include "Constraint.hpp"
 
 namespace Xplex {
-    using Eigen::MatrixXd;
-    using Eigen::VectorXd;
-
-    class Xplex;
-    class Model;
-
-    class Variable {
-        friend class Model;
-        // public:
-        // enum Type {
-        //     User, Slack
-        // };
-        
-        public:
-        Variable(std::string name, int index) : name(name), index(index) {}
-        std::string name;
-        // Type type;
-        int index;
-
-        public:
-        Variable(std::string name) : Variable(name, -1) {}
-
-        inline const std::string& getName() const { return name; }
-        // inline Type getType() const { return type; }
-
-        /**
-         * @brief Get the index of this variable on model. -1 if not indexed.
-         */
-        inline int getIndex() const { return index; }
-    };
-
     class Model {
         friend class Xplex;
 
         protected:
+        bool built;
+        Constraint objective, artificialObjective; // We only Maximize!
         std::vector<Variable> variables;
-        VectorXd c, b;
+        std::vector<Constraint> constraints;
+        VectorXd c, c_art, b;
         MatrixXd A;
+
+        public:
+        Model() { // TODO: ERASE
+            // built = true;
+            // for (int i = 0; i < 6; i++) {
+            //     variables.push_back(Variable("x_"+std::to_string(i+1), i, Variable::Type::User));
+            // }
+            // c.resize(6);
+            // b.resize(3);
+            // c << 1, 2, -1, 0, 0, 0;
+            // b << 14, 28, 30;
+            // A = MatrixXd({
+            //     {2, 1, 1, 1, 0, 0},
+            //     {4, 2, 3, 0, 1, 0},
+            //     {2, 5, 5, 0, 0, 1}
+            // });
+        }
+
+        void build();
+        
+        bool isTwoPhaseNeeded() const;
+        bool isBuilt() const;
+
+        void add(Variable& v);
+        void add(Constraint& c);
+
+        Variable newVariable(const std::string& name="");
+
+        inline Constraint& objectiveFunction() { return objective; }
     };
 }
