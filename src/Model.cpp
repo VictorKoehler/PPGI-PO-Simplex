@@ -8,6 +8,7 @@ namespace Xplex {
         // TODO: Clear artificialObjective, c, b, A
 
         for (auto& c : constraints) {
+            if (c.getScalar() < 0) c.multiplyBy(-1);
             if (c.getInequalityType() == Constraint::InequalityType::GreaterOrEqual) {
                 const auto vi = OptIndex(variables.size());
                 const auto n = "v"+std::to_string(vi)+"_cp"+std::to_string(c.getIndex());
@@ -23,6 +24,9 @@ namespace Xplex {
             c.setVariableCoefficient(variables[vi], 1.0);
             
             if (!slack) artificialObjective.setVariableCoefficient(variables[vi], -1.0);
+        }
+        if (objective.getInequalityType() == Constraint::MINIMIZE) {
+            objective.multiplyBy(-1); // We only Maximize!
         }
 
 
@@ -41,7 +45,6 @@ namespace Xplex {
         for (const auto& c : constraints) {
             b(c.getIndex()) = c.getScalar();
             for (const auto& cv : c.comp_variables) {
-                std::cout << "A(" << c.getIndex() << ", " << cv.first << ") = " << cv.second << "\n";
                 A(c.getIndex(), cv.first) = cv.second;
             }
         }
