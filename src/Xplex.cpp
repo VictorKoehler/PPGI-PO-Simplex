@@ -63,26 +63,18 @@ namespace Xplex {
             std::cout << "b: " << model->b.transpose() << "\n";
             std::cout << "A: [\n" << model->A << " ]\n\n";
         }
-        auto NBSize = getNonBasisSize();
-        if (!phase1) {
-            for (auto i = model->variables.size() - 1; i > 0; i--) {
-                if (model->variables[i].getType() == Variable::Type::Artificial) NBSize--;
-                else break;
-            }
-        }
 
         while (true) {
             iterations++;
             std::vector<uint> non_basic_vars; // TODO: Find a better solution
-            non_basic_vars.reserve(NBSize);
+            non_basic_vars.reserve(getNonBasisSize());
             FOR_TO(i, variable_is_basic.size()) {
                 if (!variable_is_basic[i] && (phase1 || model->variables[i].getType() != Variable::Type::Artificial))
                     non_basic_vars.push_back(i);
             } // non_basic_vars := j=non_basic_vars[i] -> v=model->variables[j] such that v is non basic
-            assert(non_basic_vars.size() == NBSize);
 
             if (unlikely(isVerbose())) {
-                std::cout << "=== ITERATION #" << iterations << " ===\n";
+                std::cout << "=== ITERATION #" << iterations << " (PHASE I" << (phase1 ? "" : "I") << ") ===\n";
                 std::cout << "Basic Variables: ";
                 for (const auto i : basic_vars) std::cout << " " << model->variables[i].getName() << "(" << i << ":" << model_c(i) << ")";
                 std::cout << "\n";
@@ -113,7 +105,7 @@ namespace Xplex {
             uint t_argmin = 0;
             bool t_argmin_undefined = true;
             FOR_TO(i, t.size()) {
-                if (t(i) >= 0 && (t(i) < t(t_argmin) || t_argmin_undefined)) {
+                if (t(i) > 0 && (t(i) < t(t_argmin) || t_argmin_undefined)) {
                     t_argmin_undefined = false;
                     t_argmin = uint(i);
                 }

@@ -178,8 +178,8 @@ namespace Xplex {
             if (c_ != 0) {
                 const auto t = constraints[c_-1].getInequalityType();
                 const auto b = built;
-                if(b || t == Constraint::InequalityType::LessOrEqual) std::cout << " <= ";
-                else if(t == Constraint::InequalityType::Equal) std::cout << " == ";
+                if(b || t == Constraint::InequalityType::Equal) std::cout << " == ";
+                else if(t == Constraint::InequalityType::LessOrEqual) std::cout << " <= ";
                 else if(t == Constraint::InequalityType::GreaterOrEqual) std::cout << " >= ";
                 std::cout << constraints[c_-1].getScalar() << "\n";
             } else {
