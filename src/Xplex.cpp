@@ -152,6 +152,7 @@ namespace Xplex {
         }
 
         if (!phase1) {
+            if (unlikely(isVerbose())) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n";
             std::cout << "Solution found: z = " << getObjValue() << "\n";
             std::cout << "Basic variables:";
             FOR_TO(i, basic_vars.size()) {
@@ -164,7 +165,31 @@ namespace Xplex {
             }
 
             const auto y = model_c(basic_vars).transpose() * A_B_m1;
-            std::cout << "0\nDual variables: y* = [" << y << "]\n";
+            std::cout << "0\nDual variables: y* = [" << y << "]\n\n";
+
+            std::cout << "Range Sensibility:\n";
+            FOR_TO(i, xc_b.size()) {
+                const auto delta = (-xc_b.array() / A_B_m1(Eigen::all, i).array()).eval();
+                double closest_neg = -INFINITY, closest_pos = +INFINITY;
+                for (const double v : delta) {
+                    if (v < 0) {
+                        if (v > closest_neg) closest_neg = v;
+                    } else {
+                        if (v < closest_pos) closest_pos = v;
+                    }
+                }
+
+                const auto b = model->b(i);
+                bool tail=false;
+                std::cout << "  ";
+                for (const auto& vb_ind : basic_vars) {
+                    if (tail) std::cout << "  +  ";
+                    else tail = true;
+                    std::cout << model->A(i, vb_ind) << " " << model->variables[vb_ind].getName();
+                }
+                std::cout << " = " << xc_b.dot(model->A(i, basic_vars)) << " <=  b=" << b << ";   Range: ";
+                std::cout << b+closest_neg << " <= b <= " << b+closest_pos << "\n";
+            }
         }
     }
 

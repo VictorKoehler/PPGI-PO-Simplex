@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Xplex.hpp"
 
-static const bool verbose = false;
+static const bool verbose = true;
 
 void example_1() {
     Xplex::Model m;
@@ -36,7 +36,7 @@ void example_1() {
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << " " << xplex.getValue(x3) << "\n";
 }
 
-void example_2() {
+void example_2() { // Exemplo Dual Livro p85
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -58,7 +58,7 @@ void example_2() {
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << "\n";
 }
 
-void example_3() {
+void example_3() { // Exemplo Duas Fases Livro p99
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -84,7 +84,7 @@ void example_3() {
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << "\n";
 }
 
-void example_4() {
+void example_4() { // Exemplo Dual Livro p131
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -118,6 +118,30 @@ void example_4() {
     xplex.solve();
 }
 
+void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
+    Xplex::Model m;
+    auto x1 = m.newVariable("x1");
+    auto x2 = m.newVariable("x2");
+    auto c1 = Xplex::Constraint("c1", 4);
+    auto c2 = Xplex::Constraint("c2", 12);
+    auto c3 = Xplex::Constraint("c3", 18);
+    c1.setVariableCoefficient(x1, 1);
+    c2.setVariableCoefficient(x2, 2);
+    c3.setVariableCoefficient(x1, 3);
+    c3.setVariableCoefficient(x2, 2);
+    m.add(c1);
+    m.add(c2);
+    m.add(c3);
+    m.objectiveFunction().setVariableCoefficient(x1, 3);
+    m.objectiveFunction().setVariableCoefficient(x2, 5);
+    m.build();
+
+    Xplex::Xplex xplex(&m);
+    xplex.setVerbose(verbose);
+    xplex.solve();
+    std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << "\n";
+}
+
 int main() {
     // const Xplex::Model m;
     // Xplex::Xplex xplex(&m);
@@ -134,4 +158,7 @@ int main() {
     std::cout << "\n\n\n\n";
     std::cout << "==EXAMPLE 4==\n";
     example_4();
+    std::cout << "\n\n\n\n";
+    std::cout << "==EXAMPLE 5==\n";
+    example_5();
 }
