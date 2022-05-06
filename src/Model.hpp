@@ -16,13 +16,18 @@ namespace Xplex {
         VectorXd c, c_art, b;
         MatrixXd A;
 
-        public:
-        Model() { }
+        void clear_artificials();
 
-        void build();
+        public:
+        Model() : built(false) { }
         
         bool isTwoPhaseNeeded() const;
         bool isBuilt() const;
+
+        void print() const;
+
+
+        void build();
 
         Model& add(Variable& v);
         Model& add(Constraint& c);
