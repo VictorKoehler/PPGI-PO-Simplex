@@ -1,9 +1,10 @@
 #include <iostream>
 #include "Xplex.hpp"
 
-int DEFAULT_VERBOSITY = 0;
+int DEFAULT_VERBOSITY;
 
 void example_1() {
+    std::cout << "===== EXAMPLE 1 =====\n";
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -28,15 +29,19 @@ void example_1() {
     m.objective().setVariableCoefficient(x1, 1);
     m.objective().setVariableCoefficient(x2, 2);
     m.objective().setVariableCoefficient(x3, -1);
+    m.print();
     m.build();
 
     Xplex::Xplex xplex(&m);
     xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     xplex.solve();
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << " " << xplex.getValue(x3) << "\n";
+
+    std::cout << "Expected x1=5 x2=4\n";
 }
 
 void example_2() { // Exemplo Dual Livro p85
+    std::cout << "\n\n\n===== EXAMPLE 2 =====\n";
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -50,6 +55,7 @@ void example_2() { // Exemplo Dual Livro p85
     m.add(c2);
     m.objective().setVariableCoefficient(x1, 5);
     m.objective().setVariableCoefficient(x2, 3);
+    m.print();
     m.build();
 
     Xplex::Xplex xplex(&m);
@@ -61,6 +67,7 @@ void example_2() { // Exemplo Dual Livro p85
 }
 
 void example_3() { // Exemplo Duas Fases Livro p99
+    std::cout << "\n\n\n===== EXAMPLE 3 =====\n";
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -78,6 +85,7 @@ void example_3() { // Exemplo Duas Fases Livro p99
     m.add(c3);
     m.objective().setVariableCoefficient(x1, 6);
     m.objective().setVariableCoefficient(x2, -1);
+    m.print();
     m.build();
 
     Xplex::Xplex xplex(&m);
@@ -89,6 +97,7 @@ void example_3() { // Exemplo Duas Fases Livro p99
 }
 
 void example_4() { // Exemplo Dual Livro p131
+    std::cout << "\n\n\n===== EXAMPLE 4 =====\n";
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -115,17 +124,19 @@ void example_4() { // Exemplo Dual Livro p131
     m.objective().setVariableCoefficient(x3, 5);
     m.objective().setVariableCoefficient(x4, 2);
     m.objective().setVariableCoefficient(x5, 3);
+    m.print();
     m.build();
 
     Xplex::Xplex xplex(&m);
     xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     xplex.solve();
 
-    std::cout << "\nExpected: x1=1  x5=5\n";
+    std::cout << "\nExpected: x1=1  x5=1\n";
 }
 
 void example_5_expressions();
 void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
+    std::cout << "\n\n\n===== EXAMPLE 5 =====\n";
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
     auto x2 = m.newVariable("x2");
@@ -141,6 +152,7 @@ void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
     m.add(c3);
     m.objective().setVariableCoefficient(x1, 3);
     m.objective().setVariableCoefficient(x2, 5);
+    m.print();
     m.build();
 
     Xplex::Xplex xplex(&m);
@@ -154,24 +166,17 @@ void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
 void example_6_expressions();
 
 int main() {
+    DEFAULT_VERBOSITY = 0;
     // const Xplex::Model m;
     // Xplex::Xplex xplex(&m);
     // xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     // xplex.solve();
-    // std::cout << "==EXAMPLE 1==\n";
-    // example_1();
-    // std::cout << "\n\n\n\n";
-    // std::cout << "==EXAMPLE 2==\n";
-    // example_2();
-    // std::cout << "\n\n\n\n";
-    // std::cout << "==EXAMPLE 3==\n";
-    // example_3();
-    // std::cout << "\n\n\n\n";
-    // std::cout << "==EXAMPLE 4==\n";
-    // example_4();
-    // std::cout << "\n\n\n\n";
-    // std::cout << "==EXAMPLE 5==\n";
-    // // example_5();
-    // example_5_expressions();
+    
+    example_1();
+    example_2();
+    example_3();
+    example_4();
+    example_5();
+    example_5_expressions();
     example_6_expressions();
 }

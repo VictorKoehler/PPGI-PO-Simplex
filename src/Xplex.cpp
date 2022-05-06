@@ -11,7 +11,7 @@ namespace Xplex {
 
     void Xplex::solve() {
         if (!model->isBuilt()) throw std::runtime_error("You must build the model before solving.");
-        if (unlikely(isVerbose())) model->print();
+        // if (unlikely(isVerbose())) model->print();
 
         const auto m = size_t(model->b.rows());
         const auto nn = model->variables.size() - m;
