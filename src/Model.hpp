@@ -32,7 +32,10 @@ namespace Xplex {
         Model& add(Variable& v);
         Model& add(Constraint& c);
 
-        Variable newVariable(const std::string& name="");
+
+        Model& add_discard(const Constraint& copy_discarded);
+
+        Variable newVariable(const std::string& name="", Variable::Domain domain = Variable::Domain::NonNegative);
 
         inline ObjectiveFunction& objective() { return objc; }
     };

@@ -151,24 +151,27 @@ void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
     std::cout << "\nExpected: x1=2  x2=6  x3=2\n";
 }
 
+void example_6_expressions();
+
 int main() {
     // const Xplex::Model m;
     // Xplex::Xplex xplex(&m);
     // xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     // xplex.solve();
-    std::cout << "==EXAMPLE 1==\n";
-    example_1();
-    std::cout << "\n\n\n\n";
-    std::cout << "==EXAMPLE 2==\n";
-    example_2();
-    std::cout << "\n\n\n\n";
-    std::cout << "==EXAMPLE 3==\n";
-    example_3();
-    std::cout << "\n\n\n\n";
-    std::cout << "==EXAMPLE 4==\n";
-    example_4();
-    std::cout << "\n\n\n\n";
-    std::cout << "==EXAMPLE 5==\n";
-    // example_5();
-    example_5_expressions();
+    // std::cout << "==EXAMPLE 1==\n";
+    // example_1();
+    // std::cout << "\n\n\n\n";
+    // std::cout << "==EXAMPLE 2==\n";
+    // example_2();
+    // std::cout << "\n\n\n\n";
+    // std::cout << "==EXAMPLE 3==\n";
+    // example_3();
+    // std::cout << "\n\n\n\n";
+    // std::cout << "==EXAMPLE 4==\n";
+    // example_4();
+    // std::cout << "\n\n\n\n";
+    // std::cout << "==EXAMPLE 5==\n";
+    // // example_5();
+    // example_5_expressions();
+    example_6_expressions();
 }

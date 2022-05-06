@@ -7,12 +7,24 @@ namespace Xplex {
         std::cout << "Building model...\n";
         clear_artificials();
 
+        for (const auto& v : variables) {
+            if (v.getDomain() == Variable::Domain::Unbounded) {
+                const auto vi = OptIndex(variables.size());
+                variables.push_back(Variable("co_"+v.getName(), vi, Variable::Type::NegativeMirror, Variable::Domain::NonNegative));
+
+                objc.setVariableCoefficient(variables[vi], -objc.getVariableCoefficient(v));
+                for (auto& c : constraints) {
+                    c.setVariableCoefficient(variables[vi], -c.getVariableCoefficient(v));
+                }
+            }
+        }
+
         for (auto& c : constraints) {
             if (c.getScalar() < 0) c.multiplyBy(-1);
             if (c.getInequalityType() == Constraint::InequalityType::GreaterOrEqual) {
                 const auto vi = OptIndex(variables.size());
                 const auto n = "v"+std::to_string(vi)+"_cp"+std::to_string(c.getIndex());
-                variables.push_back(Variable(n, vi, Variable::Type::NegativeSlack));
+                variables.push_back(Variable(n, vi, Variable::Type::NegativeSlack, Variable::Domain::NonNegative));
                 c.setVariableCoefficient(variables[vi], -1.0);
             }
         }
@@ -20,7 +32,7 @@ namespace Xplex {
             const bool slack = c.getInequalityType() == Constraint::InequalityType::LessOrEqual; // !slack => artificial
             const auto vi = OptIndex(variables.size());
             const auto n = "v"+std::to_string(vi)+(slack ? "_cs" : "_ca")+std::to_string(c.getIndex());
-            variables.push_back(Variable(n, vi, (slack ? Variable::Type::Slack : Variable::Type::Artificial)));
+            variables.push_back(Variable(n, vi, (slack ? Variable::Type::Slack : Variable::Type::Artificial), Variable::Domain::NonNegative));
             c.setVariableCoefficient(variables[vi], 1.0);
             
             if (!slack) artificialObjective.setVariableCoefficient(variables[vi], -1.0);
@@ -36,16 +48,16 @@ namespace Xplex {
         A = MatrixXd::Zero(constraints.size(), variables.size());
 
         for (const auto& ci : artificialObjective.comp_variables) {
-            c_art(ci.first) = ci.second;
+            c_art(ci.first) = (variables[ci.first].getDomain() == Variable::Domain::NonPositive ? -1 : 1) * ci.second;
         }
         for (const auto& ci : objective().comp_variables) {
-            c(ci.first) = ci.second;
+            c(ci.first) = (variables[ci.first].getDomain() == Variable::Domain::NonPositive ? -1 : 1) * ci.second;
         }
 
         for (const auto& c : constraints) {
             b(c.getIndex()) = c.getScalar();
             for (const auto& cv : c.comp_variables) {
-                A(c.getIndex(), cv.first) = cv.second;
+                A(c.getIndex(), cv.first) = (variables[cv.first].getDomain() == Variable::Domain::NonPositive ? -1 : 1) * cv.second;
             }
         }
 
@@ -94,19 +106,25 @@ namespace Xplex {
     }
 
     Model& Model::add(Constraint& c) {
-        clear_artificials();
         c.index = OptIndex(constraints.size());;
+        return add_discard(c);
+    }
+
+    Model& Model::add_discard(const Constraint& c) {
+        clear_artificials();
+        const auto index = OptIndex(constraints.size());;
         constraints.push_back(c);
+        constraints[index].index = index;
         #ifndef NDEBUG
         // constraints[index].dirty = false; // TODO: Complete
         #endif
         return *this;
     }
 
-    Variable Model::newVariable(const std::string& name) {
+    Variable Model::newVariable(const std::string& name, Variable::Domain domain) {
         clear_artificials();
         auto i = OptIndex(variables.size());
-        auto v = Variable(name.empty() ? "v"+std::to_string(i) : name);
+        auto v = Variable(name.empty() ? "v"+std::to_string(i) : name, domain);
         v.index = i;
         variables.push_back(v);
         return v;
