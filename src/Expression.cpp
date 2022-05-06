@@ -61,6 +61,20 @@ namespace Xplex {
         return r;
     }
 
+    Expression operator - (const Expression& m, const Variable &v) {
+        return m + (-1.0)*v;
+    }
+
+    Expression operator - (const Variable &v, const Expression& m) {
+        // return 1.0*v + (-1.0)*m; // Not defined
+        return 1.0*v - m;
+    }
+
+    Expression operator - (const Variable &v1, const Variable &v2) {
+        return 1.0*v1 + (-1.0)*v2;
+    }
+
+
     Expression operator - (const Expression& e1, const Expression& e2) {
         Expression r(e1.getScalar() - e2.getScalar());
         for (auto const& [v, m] : e1.comp_variables) {

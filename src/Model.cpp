@@ -10,7 +10,7 @@ namespace Xplex {
         for (const auto& v : variables) {
             if (v.getDomain() == Variable::Domain::Unbounded) {
                 const auto vi = OptIndex(variables.size());
-                variables.push_back(Variable("co_"+v.getName(), vi, Variable::Type::NegativeMirror, Variable::Domain::NonNegative));
+                variables.push_back(Variable("vco_"+v.getName(), vi, Variable::Type::NegativeMirror, Variable::Domain::NonNegative));
 
                 objc.setVariableCoefficient(variables[vi], -objc.getVariableCoefficient(v));
                 for (auto& c : constraints) {
@@ -139,11 +139,12 @@ namespace Xplex {
         return ss.substr(0, ss.find(".") + 2);
     }
 
-    inline auto print_expr(const std::vector<Xplex::Variable>& variables, const Expression* e, std::vector<size_t>& maxs) {
+    inline auto print_expr(const std::vector<Xplex::Variable>& variables, const Expression* e, std::vector<size_t>& maxs, bool built) {
         std::vector<std::string> r;
         for (const auto& v : variables) {
-            const auto s = e->getVariableCoefficient(v);
-            const auto rs = s == 0 ? "" : double_tostr(s) + " " + v.getName();
+            const auto neg = built && v.getDomain() == Variable::Domain::NonPositive;
+            const auto s = e->getVariableCoefficient(v) * (neg ? -1 : 1);
+            const auto rs = s == 0 ? "" : double_tostr(s) + " " + v.getName() + (neg ? "'": "");
             r.push_back(rs);
             if (rs.size() > maxs[v.getIndex()]) maxs[v.getIndex()] = rs.size();
         }
@@ -155,11 +156,11 @@ namespace Xplex {
         std::vector<size_t> maxs(variables.size(), 0);
 
         cols.reserve(constraints.size()+1);
-        cols.push_back(print_expr(variables, &objc, maxs));
+        cols.push_back(print_expr(variables, &objc, maxs, built));
         std::cout << (objc.getObjectiveType() == ObjectiveFunction::ObjectiveType::Maximization ? "Maximize:\n" : "Minimize:\n");
 
         for (const auto& c : constraints) {
-            cols.push_back(print_expr(variables, &c, maxs));
+            cols.push_back(print_expr(variables, &c, maxs, built));
         }
 
         FOR_TO (c_, cols.size()) {
@@ -175,17 +176,11 @@ namespace Xplex {
             }
 
             if (c_ != 0) {
-                switch (constraints[c_-1].getInequalityType()) {
-                case Constraint::InequalityType::Equal:
-                    std::cout << " == ";
-                    break;
-                case Constraint::InequalityType::LessOrEqual:
-                    std::cout << " <= ";
-                    break;
-                case Constraint::InequalityType::GreaterOrEqual:
-                    std::cout << " >= ";
-                    break;
-                }
+                const auto t = constraints[c_-1].getInequalityType();
+                const auto b = built;
+                if(b || t == Constraint::InequalityType::LessOrEqual) std::cout << " <= ";
+                else if(t == Constraint::InequalityType::Equal) std::cout << " == ";
+                else if(t == Constraint::InequalityType::GreaterOrEqual) std::cout << " >= ";
                 std::cout << constraints[c_-1].getScalar() << "\n";
             } else {
                 if (objc.getScalar() != 0) std::cout << (objc.getScalar() < 0 ? " - " : " + ") << abs(objc.getScalar());
@@ -193,9 +188,23 @@ namespace Xplex {
             }
         }
 
-        for (const auto& v : variables) {
-            std::cout << (v.getIndex() == 0 ? "\n" : ", ") << v.getName();
+        std::cout << "\n";
+        if (built) {
+            for (const auto& v : variables) {
+                std::cout << (v.getIndex() == 0 ? "" : ", ") << v.getName() << (v.getDomain() == Variable::Domain::NonPositive ? "'" : "");
+            }
+            std::cout << " >= 0\n";
+        } else {
+            std::string nneg = "", npos = "", unb = "";
+            for (const auto& v : variables) {
+                     if (v.getDomain() == Variable::Domain::NonNegative) nneg += ", " + v.getName();
+                else if (v.getDomain() == Variable::Domain::NonPositive) npos += ", " + v.getName();
+                else if (v.getDomain() == Variable::Domain::Unbounded)   unb += ", " + v.getName();
+            }
+            if (!nneg.empty()) std::cout << nneg.substr(2) << " >= 0\n";
+            if (!npos.empty()) std::cout << npos.substr(2) << " <= 0\n";
+            if (!unb.empty()) std::cout << unb.substr(2) << " unbounded\n";
         }
-        std::cout << " >= 0\n\n";
+        std::cout << "\n";
     }
 }

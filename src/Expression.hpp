@@ -26,6 +26,7 @@ namespace Xplex {
         friend Expression operator * (const double m, const Variable &v);
         friend Expression operator + (const Expression& m, const Variable &v);
         friend Expression operator + (const Variable &v, const Expression& m);
+        friend Expression operator + (const Variable &v1, const Variable &v2);
         friend Expression operator + (const Expression& e1, const Expression& e2);
         friend Expression operator - (const Expression& e1, const Expression& e2);
     };
@@ -35,5 +36,8 @@ namespace Xplex {
     Expression operator + (const Variable &v, const Expression& m);
     Expression operator + (const Variable &v1, const Variable &v2);
     Expression operator + (const Expression& e1, const Expression& e2);
+    Expression operator - (const Expression& m, const Variable &v);
+    Expression operator - (const Variable &v, const Expression& m);
+    Expression operator - (const Variable &v1, const Variable &v2);
     Expression operator - (const Expression& e1, const Expression& e2);
 }
