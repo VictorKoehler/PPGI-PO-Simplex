@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "Constraint.hpp"
+#include "Objective.hpp"
 
 namespace Xplex {
     class Model {
@@ -9,7 +10,7 @@ namespace Xplex {
 
         protected:
         bool built;
-        Constraint objective, artificialObjective; // We only Maximize!
+        ObjectiveFunction objc, artificialObjective; // We only Maximize!
         std::vector<Variable> variables;
         std::vector<Constraint> constraints;
         VectorXd c, c_art, b;
@@ -23,11 +24,11 @@ namespace Xplex {
         bool isTwoPhaseNeeded() const;
         bool isBuilt() const;
 
-        void add(Variable& v);
-        void add(Constraint& c);
+        Model& add(Variable& v);
+        Model& add(Constraint& c);
 
         Variable newVariable(const std::string& name="");
 
-        inline Constraint& objectiveFunction() { return objective; }
+        inline ObjectiveFunction& objective() { return objc; }
     };
 }

@@ -127,7 +127,7 @@ namespace Xplex {
             }
             if (t_argmin_undefined) {
                 // TODO: Unlimited
-
+                std::cout << "Problem is unlimited\n";
                 if (unlikely(isVerbose())) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
                 return;
             }
@@ -194,7 +194,7 @@ namespace Xplex {
     }
 
     double Xplex::getObjValue() const {
-        return model->objective.getScalar() + model_c(basic_vars).transpose() * A_B_m1 * model->b;
+        return model->objc.getScalar() + model_c(basic_vars).transpose() * A_B_m1 * model->b;
     }
 
     double Xplex::getValue(const Variable& v) const {

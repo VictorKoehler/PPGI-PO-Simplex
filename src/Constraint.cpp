@@ -4,8 +4,12 @@
 
 namespace Xplex {
 
+    Constraint::Constraint(const Expression& e, double b, InequalityType restr) : Expression(e), name(""), index(-1), restr(restr), type(User) {
+        setScalar(b - e.getScalar());
+    }
+
     Constraint::Constraint(const std::string& name, OptIndex index, double b_i, InequalityType restr, Type type)
-        : name(name), index(index), b_i(b_i), restr(restr), type(type) {
+        : Expression(b_i), name(name), index(index), restr(restr), type(type) {
         // #ifndef NDEBUG
         // dirty = false;
         // #endif
@@ -19,18 +23,9 @@ namespace Xplex {
 
     Constraint::InequalityType Constraint::getInequalityType() const { return restr; }
 
-    double Constraint::getVariableCoefficient(const Variable& v) const { return comp_variables.at(v.getIndex()); }
-
-    double Constraint::getScalar() const { return b_i; }
-
-
-    void Constraint::setScalar(double b) { b_i = b; }
 
     void Constraint::multiplyBy(double m) {
-        for(auto& p : comp_variables) {
-            p.second *= m;
-        }
-        b_i *= m;
+        Expression::multiplyBy(m);
         if (m < 0) {
             if (restr == InequalityType::GreaterOrEqual) restr = InequalityType::LessOrEqual;
             else if (restr == InequalityType::LessOrEqual) restr = InequalityType::GreaterOrEqual;
@@ -43,9 +38,14 @@ namespace Xplex {
         restr = t;
     }
 
-    void Constraint::setVariableCoefficient(const Variable& v, double c) {
-        if (v.getIndex() == -1)
-            std::cerr << "WARNING: You must Model::add this variable before setting its coefficient.";
-        comp_variables[v.getIndex()] = c;
-    }
+
+
+    Constraint operator <= (const Expression& e1, const double b) { return Constraint(e1, b, Constraint::InequalityType::LessOrEqual); }
+    Constraint operator == (const Expression& e1, const double b) { return Constraint(e1, b, Constraint::InequalityType::Equal); }
+    Constraint operator >= (const Expression& e1, const double b) { return Constraint(e1, b, Constraint::InequalityType::GreaterOrEqual); }
+
+    Constraint operator <= (const Expression& e1, const Expression& e2) { return (e1-e2) <= 0.0; }
+    Constraint operator == (const Expression& e1, const Expression& e2) { return (e1-e2) == 0.0; }
+    Constraint operator >= (const Expression& e1, const Expression& e2) { return (e1-e2) >= 0.0; }
+
 }

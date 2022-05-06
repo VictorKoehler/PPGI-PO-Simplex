@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Xplex.hpp"
 
-static const bool verbose = true;
+int DEFAULT_VERBOSITY = 0;
 
 void example_1() {
     Xplex::Model m;
@@ -25,13 +25,13 @@ void example_1() {
     m.add(c1);
     m.add(c2);
     m.add(c3);
-    m.objectiveFunction().setVariableCoefficient(x1, 1);
-    m.objectiveFunction().setVariableCoefficient(x2, 2);
-    m.objectiveFunction().setVariableCoefficient(x3, -1);
+    m.objective().setVariableCoefficient(x1, 1);
+    m.objective().setVariableCoefficient(x2, 2);
+    m.objective().setVariableCoefficient(x3, -1);
     m.build();
 
     Xplex::Xplex xplex(&m);
-    xplex.setVerbose(verbose);
+    xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     xplex.solve();
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << " " << xplex.getValue(x3) << "\n";
 }
@@ -48,14 +48,16 @@ void example_2() { // Exemplo Dual Livro p85
     c2.setVariableCoefficient(x2, 2);
     m.add(c1);
     m.add(c2);
-    m.objectiveFunction().setVariableCoefficient(x1, 5);
-    m.objectiveFunction().setVariableCoefficient(x2, 3);
+    m.objective().setVariableCoefficient(x1, 5);
+    m.objective().setVariableCoefficient(x2, 3);
     m.build();
 
     Xplex::Xplex xplex(&m);
-    xplex.setVerbose(verbose);
+    xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     xplex.solve();
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << "\n";
+
+    std::cout << "\nExpected: x1=20/19  x2=45/19\n";
 }
 
 void example_3() { // Exemplo Duas Fases Livro p99
@@ -74,14 +76,16 @@ void example_3() { // Exemplo Duas Fases Livro p99
     m.add(c1);
     m.add(c2);
     m.add(c3);
-    m.objectiveFunction().setVariableCoefficient(x1, 6);
-    m.objectiveFunction().setVariableCoefficient(x2, -1);
+    m.objective().setVariableCoefficient(x1, 6);
+    m.objective().setVariableCoefficient(x2, -1);
     m.build();
 
     Xplex::Xplex xplex(&m);
-    xplex.setVerbose(verbose);
+    xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     xplex.solve();
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << "\n";
+
+    std::cout << "\nExpected: x1=4  x2=5  x4=10\n";
 }
 
 void example_4() { // Exemplo Dual Livro p131
@@ -105,19 +109,22 @@ void example_4() { // Exemplo Dual Livro p131
     c2.setVariableCoefficient(x5, 1);
     m.add(c1);
     m.add(c2);
-    m.objectiveFunction().setVariableCoefficient(x1, 2);
-    m.objectiveFunction().setVariableCoefficient(x2, 3);
-    m.objectiveFunction().setVariableCoefficient(x3, 5);
-    m.objectiveFunction().setVariableCoefficient(x4, 2);
-    m.objectiveFunction().setVariableCoefficient(x5, 3);
-    m.objectiveFunction().setInequalityType(Xplex::Constraint::MINIMIZE);
+    m.objective().multiplyBy(-1);
+    m.objective().setVariableCoefficient(x1, 2);
+    m.objective().setVariableCoefficient(x2, 3);
+    m.objective().setVariableCoefficient(x3, 5);
+    m.objective().setVariableCoefficient(x4, 2);
+    m.objective().setVariableCoefficient(x5, 3);
     m.build();
 
     Xplex::Xplex xplex(&m);
-    xplex.setVerbose(verbose);
+    xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     xplex.solve();
+
+    std::cout << "\nExpected: x1=1  x5=5\n";
 }
 
+void example_5_expressions();
 void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
     Xplex::Model m;
     auto x1 = m.newVariable("x1");
@@ -132,20 +139,22 @@ void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
     m.add(c1);
     m.add(c2);
     m.add(c3);
-    m.objectiveFunction().setVariableCoefficient(x1, 3);
-    m.objectiveFunction().setVariableCoefficient(x2, 5);
+    m.objective().setVariableCoefficient(x1, 3);
+    m.objective().setVariableCoefficient(x2, 5);
     m.build();
 
     Xplex::Xplex xplex(&m);
-    xplex.setVerbose(verbose);
+    xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     xplex.solve();
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << "\n";
+
+    std::cout << "\nExpected: x1=2  x2=6  x3=2\n";
 }
 
 int main() {
     // const Xplex::Model m;
     // Xplex::Xplex xplex(&m);
-    // xplex.setVerbose(verbose);
+    // xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
     // xplex.solve();
     std::cout << "==EXAMPLE 1==\n";
     example_1();
@@ -160,5 +169,6 @@ int main() {
     example_4();
     std::cout << "\n\n\n\n";
     std::cout << "==EXAMPLE 5==\n";
-    example_5();
+    // example_5();
+    example_5_expressions();
 }

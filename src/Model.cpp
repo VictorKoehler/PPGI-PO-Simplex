@@ -25,8 +25,8 @@ namespace Xplex {
             
             if (!slack) artificialObjective.setVariableCoefficient(variables[vi], -1.0);
         }
-        if (objective.getInequalityType() == Constraint::MINIMIZE) {
-            objective.multiplyBy(-1); // We only Maximize!
+        if (objective().getObjectiveType() == ObjectiveFunction::Minimization) {
+            objective().multiplyBy(-1); // We only Maximize!
         }
 
 
@@ -38,7 +38,7 @@ namespace Xplex {
         for (const auto& ci : artificialObjective.comp_variables) {
             c_art(ci.first) = ci.second;
         }
-        for (const auto& ci : objective.comp_variables) {
+        for (const auto& ci : objective().comp_variables) {
             c(ci.first) = ci.second;
         }
 
@@ -60,17 +60,19 @@ namespace Xplex {
         return built;
     }
 
-    void Model::add(Variable& v) {
+    Model& Model::add(Variable& v) {
         v.index = OptIndex(variables.size());
         variables.push_back(v);
+        return *this;
     }
 
-    void Model::add(Constraint& c) {
+    Model& Model::add(Constraint& c) {
         c.index = OptIndex(constraints.size());;
         constraints.push_back(c);
         #ifndef NDEBUG
         // constraints[index].dirty = false; // TODO: Complete
         #endif
+        return *this;
     }
 
     Variable Model::newVariable(const std::string& name) {
