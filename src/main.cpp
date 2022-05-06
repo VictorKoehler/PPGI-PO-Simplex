@@ -125,6 +125,7 @@ void example_4() { // Exemplo Dual Livro p131
     m.objective().setVariableCoefficient(x4, 2);
     m.objective().setVariableCoefficient(x5, 3);
     m.print();
+    m.getDual().print();
     m.build();
 
     Xplex::Xplex xplex(&m);
@@ -164,6 +165,7 @@ void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
 }
 
 void example_6_expressions();
+void example_7_expressions();
 
 int main() {
     DEFAULT_VERBOSITY = 0;
@@ -179,4 +181,5 @@ int main() {
     example_5();
     example_5_expressions();
     example_6_expressions();
+    example_7_expressions();
 }

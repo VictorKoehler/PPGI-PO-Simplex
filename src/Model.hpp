@@ -23,7 +23,7 @@ namespace Xplex {
         
         bool isTwoPhaseNeeded() const;
         bool isBuilt() const;
-
+        Model getDual() const;
         void print() const;
 
 
@@ -31,7 +31,6 @@ namespace Xplex {
 
         Model& add(Variable& v);
         Model& add(Constraint& c);
-
 
         Model& add_discard(const Constraint& copy_discarded);
 

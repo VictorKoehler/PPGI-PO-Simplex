@@ -39,6 +39,28 @@ void example_6_expressions() { // Exemplo Dual Livro p39
 
     m.objective() = Xplex::Maximize(2*x1 + x2 -   x3 + 3*x4 -   x5);
     m.print();
+    m.getDual().print();
+    m.build();
+    m.print();
+
+    Xplex::Xplex xplex(&m);
+    xplex.setVerbose(DEFAULT_VERBOSITY >= 1);
+    xplex.solve();
+}
+
+void example_7_expressions() { // Exemplo Dual Livro p22
+    std::cout << "\n\n\n===== EXAMPLE 7 =====\n";
+    Xplex::Model m;
+    auto x1 = m.newVariable("x1", Xplex::Variable::Domain::NonPositive);
+    auto x2 = m.newVariable("x2");
+    auto x3 = m.newVariable("x3", Xplex::Variable::Domain::Unbounded);
+
+    m.add_discard(  x1 - 6*x2 +   x3 >=  2);
+    m.add_discard(5*x1 + 7*x2 - 2*x3 == -4);
+
+    m.objective() = Xplex::Maximize(8*x1 + 3*x2 - 2*x3);
+    m.print();
+    m.getDual().print();
     m.build();
     m.print();
 

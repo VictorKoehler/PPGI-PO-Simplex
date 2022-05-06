@@ -107,6 +107,8 @@ namespace Xplex {
 
     Model& Model::add(Constraint& c) {
         c.index = OptIndex(constraints.size());;
+        if (c.name.empty())
+            c.name = "c_" + std::to_string(c.index);
         return add_discard(c);
     }
 
@@ -115,6 +117,8 @@ namespace Xplex {
         const auto index = OptIndex(constraints.size());;
         constraints.push_back(c);
         constraints[index].index = index;
+        if (constraints[index].name.empty())
+            constraints[index].name = "c_" + std::to_string(index);
         #ifndef NDEBUG
         // constraints[index].dirty = false; // TODO: Complete
         #endif
@@ -206,5 +210,47 @@ namespace Xplex {
             if (!unb.empty()) std::cout << unb.substr(2) << " unbounded\n";
         }
         std::cout << "\n";
+    }
+
+    Variable::Domain dual_constr_to_var_type(Constraint::InequalityType t) {
+             if (t == Constraint::InequalityType::GreaterOrEqual) return Variable::Domain::NonNegative;
+        else if (t == Constraint::InequalityType::LessOrEqual) return Variable::Domain::NonPositive;
+        else return Variable::Domain::Unbounded;
+    }
+
+    Constraint::InequalityType dual_var_to_constr_type(Variable::Domain t) {
+             if (t == Variable::Domain::NonNegative) return Constraint::InequalityType::LessOrEqual;
+        else if (t == Variable::Domain::NonPositive) return Constraint::InequalityType::GreaterOrEqual;
+        else return Constraint::InequalityType::Equal;
+    }
+    
+    Model Model::getDual() const {
+        if (isBuilt()) {
+            Model tmp = *this;
+            tmp.clear_artificials();
+            return tmp.getDual();
+        }
+        Model dual;
+
+        // SETS THE OBJECTIVE FUNCTION + VARIABLES
+        if (dual.objective().getObjectiveType() == objc.getObjectiveType())
+            dual.objective().multiplyBy(-1);
+        
+        for (const auto& c : constraints) {
+            const auto v = dual.newVariable("y_" + c.getName(), dual_constr_to_var_type(c.getInequalityType()));
+            dual.objective().setVariableCoefficient(v, c.getScalar());
+        }
+
+        // SETS THE CONSTRAINTS
+        FOR_TO(v_i, variables.size()) {
+            const auto& v = variables[v_i];
+            auto dc = Constraint("dc_" + v.getName(), objc.getVariableCoefficient(v), dual_var_to_constr_type(v.getDomain()));
+            FOR_TO(y_i, constraints.size()) {
+                dc.setVariableCoefficient(dual.variables[y_i], constraints[y_i].getVariableCoefficient(v));
+            }
+            dual.add(dc);
+        }
+
+        return dual;
     }
 }
