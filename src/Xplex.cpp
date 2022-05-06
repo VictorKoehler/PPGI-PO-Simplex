@@ -129,7 +129,7 @@ namespace Xplex {
                 // TODO: Unlimited
 
                 if (unlikely(isVerbose())) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
-                break;
+                return;
             }
 
             xc_b -= t[t_argmin] * d; // Changes class state
@@ -149,6 +149,22 @@ namespace Xplex {
                     && "The matrix inversion method produced a different result than Eigen's inverse");
 
             if (unlikely(isVerbose())) std::cout << "E:\n" << E << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
+        }
+
+        if (!phase1) {
+            std::cout << "Solution found: z = " << getObjValue() << "\n";
+            std::cout << "Basic variables:";
+            FOR_TO(i, basic_vars.size()) {
+                std::cout << "  " << model->variables[basic_vars[i]].getName() << "=" << xc_b(i);
+            }
+            std::cout << "\nNon-Basic variables: ";
+            FOR_TO(i, variable_is_basic.size()) {
+                if (variable_is_basic[i]) continue;
+                std::cout << model->variables[i].getName() << " = ";
+            }
+
+            const auto y = model_c(basic_vars).transpose() * A_B_m1;
+            std::cout << "0\nDual variables: y* = [" << y << "]\n";
         }
     }
 

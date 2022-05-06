@@ -84,6 +84,40 @@ void example_3() {
     std::cout << xplex.getObjValue() << ": " << xplex.getValue(x1) << " " << xplex.getValue(x2) << "\n";
 }
 
+void example_4() {
+    Xplex::Model m;
+    auto x1 = m.newVariable("x1");
+    auto x2 = m.newVariable("x2");
+    auto x3 = m.newVariable("x3");
+    auto x4 = m.newVariable("x4");
+    auto x5 = m.newVariable("x5");
+    auto c1 = Xplex::Constraint("c1", 4, Xplex::Constraint::InequalityType::GreaterOrEqual);
+    auto c2 = Xplex::Constraint("c2", 3, Xplex::Constraint::InequalityType::GreaterOrEqual);
+    c1.setVariableCoefficient(x1, 1);
+    c1.setVariableCoefficient(x2, 1);
+    c1.setVariableCoefficient(x3, 2);
+    c1.setVariableCoefficient(x4, 1);
+    c1.setVariableCoefficient(x5, 3);
+    c2.setVariableCoefficient(x1, 2);
+    c2.setVariableCoefficient(x2, -2);
+    c2.setVariableCoefficient(x3, 3);
+    c2.setVariableCoefficient(x4, 1);
+    c2.setVariableCoefficient(x5, 1);
+    m.add(c1);
+    m.add(c2);
+    m.objectiveFunction().setVariableCoefficient(x1, 2);
+    m.objectiveFunction().setVariableCoefficient(x2, 3);
+    m.objectiveFunction().setVariableCoefficient(x3, 5);
+    m.objectiveFunction().setVariableCoefficient(x4, 2);
+    m.objectiveFunction().setVariableCoefficient(x5, 3);
+    m.objectiveFunction().setInequalityType(Xplex::Constraint::MINIMIZE);
+    m.build();
+
+    Xplex::Xplex xplex(&m);
+    xplex.setVerbose(verbose);
+    xplex.solve();
+}
+
 int main() {
     // const Xplex::Model m;
     // Xplex::Xplex xplex(&m);
@@ -97,4 +131,7 @@ int main() {
     std::cout << "\n\n\n\n";
     std::cout << "==EXAMPLE 3==\n";
     example_3();
+    std::cout << "\n\n\n\n";
+    std::cout << "==EXAMPLE 4==\n";
+    example_4();
 }
