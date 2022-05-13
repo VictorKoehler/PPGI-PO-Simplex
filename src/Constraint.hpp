@@ -23,9 +23,6 @@ namespace Xplex {
         OptIndex index;
         InequalityType restr;
         Type type;
-        // #ifndef NDEBUG // TODO: dirty
-        // bool dirty;
-        // #endif
 
         public:
         Constraint(const std::string& name, double b_i=0, InequalityType restr=LessOrEqual) : Constraint(name, -1, b_i, restr, User) {}

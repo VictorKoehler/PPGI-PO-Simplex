@@ -28,5 +28,7 @@ namespace Xplex {
          * @brief Get the index of this variable on model. -1 if not indexed.
          */
         inline OptIndex getIndex() const { return index; }
+
+        inline void setDomain(Domain d) { domain = d; }
     };
 }

@@ -10,10 +10,10 @@
 extern char const *const GIT_COMMIT;
 extern int DEFAULT_VERBOSITY;
 
-#ifdef NDEBUG
-static const bool ON_DEBUG = false;
-#else
+#ifdef ONDEBUG
 static const bool ON_DEBUG = true;
+#else
+static const bool ON_DEBUG = false;
 #endif
 
 namespace Xplex {

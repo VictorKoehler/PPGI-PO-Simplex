@@ -9,11 +9,7 @@ namespace Xplex {
     }
 
     Constraint::Constraint(const std::string& name, OptIndex index, double b_i, InequalityType restr, Type type)
-        : Expression(b_i), name(name), index(index), restr(restr), type(type) {
-        // #ifndef NDEBUG
-        // dirty = false;
-        // #endif
-    }
+        : Expression(b_i), name(name), index(index), restr(restr), type(type) { }
 
     OptIndex Constraint::getIndex() const { return index; }
 

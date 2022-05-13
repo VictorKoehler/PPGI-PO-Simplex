@@ -4,8 +4,8 @@
 void example_5_expressions() { // Exemplo Aula Anand - Análise de Sensibilidade
     std::cout << "\n\n\n===== EXAMPLE 5 (Expressions) =====\n";
     Xplex::Model m;
-    auto x1 = m.newVariable("x1");
-    auto x2 = m.newVariable("x2");
+    auto x1 = *m.newVariable("x1");
+    auto x2 = *m.newVariable("x2");
 
     auto c1 =  1*x1        <= 4;
     auto c2 =         2*x2 <= 12;
@@ -26,11 +26,11 @@ void example_5_expressions() { // Exemplo Aula Anand - Análise de Sensibilidade
 void example_6_expressions() { // Exemplo Dual Livro p39
     std::cout << "\n\n\n===== EXAMPLE 6 =====\n";
     Xplex::Model m;
-    auto x1 = m.newVariable("x1");
-    auto x2 = m.newVariable("x2");
-    auto x3 = m.newVariable("x3", Xplex::Variable::Domain::NonPositive);
-    auto x4 = m.newVariable("x4", Xplex::Variable::Domain::Unbounded);
-    auto x5 = m.newVariable("x5");
+    auto x1 = *m.newVariable("x1");
+    auto x2 = *m.newVariable("x2");
+    auto x3 = *m.newVariable("x3", Xplex::Variable::Domain::NonPositive);
+    auto x4 = *m.newVariable("x4", Xplex::Variable::Domain::Unbounded);
+    auto x5 = *m.newVariable("x5");
 
     m.add_discard(  x1 + 2*x2 -   x3 +   x4 + 3*x5 >=  5);
     m.add_discard(4*x1        +   x3 - 2*x4 -   x5 <=  0);
@@ -51,9 +51,9 @@ void example_6_expressions() { // Exemplo Dual Livro p39
 void example_7_expressions() { // Exemplo Dual Livro p22
     std::cout << "\n\n\n===== EXAMPLE 7 =====\n";
     Xplex::Model m;
-    auto x1 = m.newVariable("x1", Xplex::Variable::Domain::NonPositive);
-    auto x2 = m.newVariable("x2");
-    auto x3 = m.newVariable("x3", Xplex::Variable::Domain::Unbounded);
+    auto x1 = *m.newVariable("x1", Xplex::Variable::Domain::NonPositive);
+    auto x2 = *m.newVariable("x2");
+    auto x3 = *m.newVariable("x3", Xplex::Variable::Domain::Unbounded);
 
     m.add_discard(  x1 - 6*x2 +   x3 >=  2);
     m.add_discard(5*x1 + 7*x2 - 2*x3 == -4);

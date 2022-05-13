@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include "global.hpp"
 #include "Model.hpp"
 
@@ -7,10 +8,13 @@ namespace Xplex {
         std::cout << "Building model...\n";
         clear_artificials();
 
+        variables.reserve(variables.size()*2); // Ensures variables wont be moved (because of push_back) while inside the for
         for (const auto& v : variables) {
             if (v.getDomain() == Variable::Domain::Unbounded) {
                 const auto vi = OptIndex(variables.size());
-                variables.push_back(Variable("vco_"+v.getName(), vi, Variable::Type::NegativeMirror, Variable::Domain::NonNegative));
+                const auto n = "vco_"+v.getName();
+                variables.push_back(Variable(n, vi, Variable::Type::NegativeMirror, Variable::Domain::NonNegative));
+                variables_names[n] = vi;
 
                 objc.setVariableCoefficient(variables[vi], -objc.getVariableCoefficient(v));
                 for (auto& c : constraints) {
@@ -25,6 +29,7 @@ namespace Xplex {
                 const auto vi = OptIndex(variables.size());
                 const auto n = "v"+std::to_string(vi)+"_cp"+std::to_string(c.getIndex());
                 variables.push_back(Variable(n, vi, Variable::Type::NegativeSlack, Variable::Domain::NonNegative));
+                variables_names[n] = vi;
                 c.setVariableCoefficient(variables[vi], -1.0);
             }
         }
@@ -33,6 +38,7 @@ namespace Xplex {
             const auto vi = OptIndex(variables.size());
             const auto n = "v"+std::to_string(vi)+(slack ? "_cs" : "_ca")+std::to_string(c.getIndex());
             variables.push_back(Variable(n, vi, (slack ? Variable::Type::Slack : Variable::Type::Artificial), Variable::Domain::NonNegative));
+            variables_names[n] = vi;
             c.setVariableCoefficient(variables[vi], 1.0);
             
             if (!slack) artificialObjective.setVariableCoefficient(variables[vi], -1.0);
@@ -69,6 +75,7 @@ namespace Xplex {
             built = false;
             auto nsize = variables.size();
             while (nsize > 0 && variables[nsize-1].getType() != Variable::Type::User) {
+                variables_names.erase(variables[nsize-1].getName());
                 nsize--;
             }
 
@@ -82,11 +89,11 @@ namespace Xplex {
 
             assert(nsize < variables.size());
             variables.resize(nsize, Variable(""));
-            if constexpr (ON_DEBUG) {
-                for (const auto& v : variables) {
-                    assert(v.getType() == Variable::Type::User);
-                }
+            #ifndef NDEBUG
+            for (const auto& v : variables) {
+                assert(v.getType() == Variable::Type::User);
             }
+            #endif
         }
     }
     
@@ -102,6 +109,7 @@ namespace Xplex {
         clear_artificials();
         v.index = OptIndex(variables.size());
         variables.push_back(v);
+        variables_names[v.getName()] = v.index;
         return *this;
     }
 
@@ -125,13 +133,14 @@ namespace Xplex {
         return *this;
     }
 
-    Variable Model::newVariable(const std::string& name, Variable::Domain domain) {
+    Model::VariableRef Model::newVariable(const std::string& name, Variable::Domain domain) {
         clear_artificials();
         auto i = OptIndex(variables.size());
         auto v = Variable(name.empty() ? "v"+std::to_string(i) : name, domain);
         v.index = i;
         variables.push_back(v);
-        return v;
+        variables_names[v.getName()] = i;
+        return Model::VariableRef(i, &variables);
     }
 
     // Constraint&& Model::newConstraint(const std::string& name, double b_i, Constraint::InequalityType restr) {
@@ -140,10 +149,10 @@ namespace Xplex {
 
     inline std::string double_tostr(double d) {
         const auto ss = std::to_string(d);
-        return ss.substr(0, ss.find(".") + 2);
+        return ss.substr(0, ss.find(".") + 3);
     }
 
-    inline auto print_expr(const std::vector<Xplex::Variable>& variables, const Expression* e, std::vector<size_t>& maxs, bool built) {
+    inline auto print_expr(const std::vector<Xplex::Variable>& variables, const Expression* e, std::vector<size_t>& maxs, bool built, const std::string& n) {
         std::vector<std::string> r;
         for (const auto& v : variables) {
             const auto neg = built && v.getDomain() == Variable::Domain::NonPositive;
@@ -152,31 +161,40 @@ namespace Xplex {
             r.push_back(rs);
             if (rs.size() > maxs[v.getIndex()]) maxs[v.getIndex()] = rs.size();
         }
+        if (n.size() > maxs[maxs.size()-1]) maxs[maxs.size()-1] = n.size();
         return r;
     }
 
-    void Model::print() const {
+    void Model::print(bool spaced) const {
         std::vector<std::vector<std::string>> cols;
-        std::vector<size_t> maxs(variables.size(), 0);
+        std::vector<size_t> maxs(variables.size()+1, 0);
 
         cols.reserve(constraints.size()+1);
-        cols.push_back(print_expr(variables, &objc, maxs, built));
+        cols.push_back(print_expr(variables, &objc, maxs, built, ""));
         std::cout << (objc.getObjectiveType() == ObjectiveFunction::ObjectiveType::Maximization ? "Maximize:\n" : "Minimize:\n");
 
         for (const auto& c : constraints) {
-            cols.push_back(print_expr(variables, &c, maxs, built));
+            cols.push_back(print_expr(variables, &c, maxs, built, c.getName()));
         }
 
         FOR_TO (c_, cols.size()) {
+            if (c_ != 0) std::cout << std::string(maxs[maxs.size()-1] - constraints[c_-1].getName().size(), ' ') << constraints[c_-1].getName() << ": ";
             const auto& c = cols[c_];
+            bool first_print = true;
             FOR_TO (i, c.size()) {
-                const auto& s = c[i];
+                auto s = c[i];
                 bool neg = s.size() >= 1 && s[0] == '-';
-                const auto s_ = neg ? s.substr(1) : s;
-                if (i != 0) {
-                    std::cout << (s.size() == 0 ? "     " : (neg ? "  -  " : "  +  "));
+                if (neg) s = s.substr(1);
+                if (spaced) {
+                    if (i != 0) std::cout << (s.empty() ? "     " : (neg ? "  -  " : "  +  "));
+                    else std::cout << (neg ? "- " : "  ");
+                    std::cout << std::string(maxs[i] - s.size(), ' ') << s;
+                } else {
+                    if (s.empty()) continue;
+                    std::cout << (neg ? " - " : (first_print ? "   " : " + "));
+                    std::cout << s;
+                    first_print = false;
                 }
-                std::cout << std::string(maxs[i]-s_.size(), ' ') << s_;
             }
 
             if (c_ != 0) {
@@ -238,7 +256,7 @@ namespace Xplex {
         
         for (const auto& c : constraints) {
             const auto v = dual.newVariable("y_" + c.getName(), dual_constr_to_var_type(c.getInequalityType()));
-            dual.objective().setVariableCoefficient(v, c.getScalar());
+            dual.objective().setVariableCoefficient(*v, c.getScalar());
         }
 
         // SETS THE CONSTRAINTS
@@ -252,5 +270,11 @@ namespace Xplex {
         }
 
         return dual;
+    }
+
+    Model::VariableRef Model::getVariable(const std::string& name) {
+        const auto& f = variables_names.find(name);
+        if (f != variables_names.end() && size_t(f->second) < variables.size()) return VariableRef(f->second, &variables);
+        return VariableRef();
     }
 }
