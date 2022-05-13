@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include "Xplex.hpp"
+#include "LPParser.hpp"
 
 int DEFAULT_VERBOSITY;
 
@@ -186,6 +187,12 @@ int main(int argc, const char** argv) {
     }
     
     if (arg.size() == 2) {
+        Xplex::Model m;
+        Xplex::LPParserXplexModel(m, arg[1]).parse();
+        m.print(false);
+        Xplex::Xplex x(&m);
+        x.setVerbose(DEFAULT_VERBOSITY >= 1);
+        x.solve();
     } else if (arg.size() == 1) {
         example_1();
         example_2();
