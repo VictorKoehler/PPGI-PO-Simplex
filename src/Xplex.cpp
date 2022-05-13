@@ -3,6 +3,7 @@
 #include "Xplex.hpp"
 
 namespace Xplex {
+    static const double EPSILON = 1e-5;
     Xplex::Xplex(const Model *model) : model(model), iterations(0), verbose(false), phase1(false) { }
 
     Xplex::Xplex(Model *model) : Xplex(const_cast<const Model *>(model)) {
@@ -37,6 +38,15 @@ namespace Xplex {
     }
 
     template<typename T>
+    inline auto eigen_arg_first_positive(T &z) {
+        FOR_TO(i, z.size()) {
+            if (z(i) > EPSILON) return i;
+        }
+        decltype((z.size())) dummy = 0;
+        return dummy;
+    }
+
+    template<typename T>
     inline auto eigen_argmax(T &z) {
         decltype(z.size()) argmax = 0;
         FOR_TO(i, z.size()) {
@@ -56,12 +66,26 @@ namespace Xplex {
 
     #define model_c(...) (phase1 ? model->c_art(__VA_ARGS__) : model->c(__VA_ARGS__))
 
+    template<typename T>
+    std::string e_print(T v, size_t space=5) {
+        std::string b = "[";
+        b.reserve(v.size()*(space+1)+4);
+        for (const auto& i : v) {
+            const auto ir = std::to_string(i).substr(0, space);
+            b.append(ir + std::string(space - ir.size() + 1, ' '));
+        }
+        b.pop_back();
+        b.push_back(']');
+        return b;
+    }
+
     void Xplex::revised_simplex() {
         if (unlikely(isVerbose())) {
             if (phase1) std::cout << "ç: " << model->c_art.transpose() << "\n";
             else std::cout << "c: " << model->c.transpose() << "\n";
             std::cout << "b: " << model->b.transpose() << "\n";
             std::cout << "A: [\n" << model->A << " ]\n\n";
+            std::cout << "A_B-1: [\n" << A_B_m1 << " ]\n\n\n";
         }
 
         while (true) {
@@ -75,6 +99,7 @@ namespace Xplex {
 
             if (unlikely(isVerbose())) {
                 std::cout << "=== ITERATION #" << iterations << " (PHASE I" << (phase1 ? "" : "I") << ") ===\n";
+                std::cout << "Current Z: " << std::to_string(getObjValue()) << "\n";
                 std::cout << "Basic Variables: ";
                 for (const auto i : basic_vars) std::cout << " " << model->variables[i].getName() << "(" << i << ":" << model_c(i) << ")";
                 std::cout << "\n";
@@ -92,33 +117,46 @@ namespace Xplex {
             // std::cout << "[" << model_c(non_basic_vars).transpose() << "] - [" << (model_c(basic_vars).transpose() * A_B_m1 * model->A(Eigen::all, non_basic_vars)) << "]\n\n";
 
             auto coeffz = model_c(non_basic_vars).transpose() - model_c(basic_vars).transpose() * A_B_m1 * model->A(Eigen::all, non_basic_vars);
-            auto coeffz_argmax = eigen_argmax(coeffz);
+
+            // auto coeffz_argmax = eigen_argmax(coeffz); // Usual rule
+            auto coeffz_argmax = eigen_arg_first_positive(coeffz); // Bland's rule
+
             const auto entering_var = non_basic_vars[coeffz_argmax];
-            if (unlikely(isVerbose())) std::cout << "Z coeff NB: " << coeffz << ": " << coeffz_argmax << "\n";
+            if (unlikely(isVerbose())) {
+                std::cout << "Z coeff NB: " << e_print(coeffz) << ":=> c[cin=" << coeffz_argmax << "]=" << coeffz[coeffz_argmax] << "\n";
+            }
             if (coeffz[coeffz_argmax] <= 0) {
                 // TODO: Finish routine
+                std::cout << "No coefficient improves the current solution. Exiting...\n";
                 break;
             }
 
             auto d = A_B_m1 * model->A(Eigen::all, entering_var);
             auto t = (xc_b.array() / d.array()).eval();
-            uint t_argmin = 0;
-            bool t_argmin_undefined = true;
+            int t_argmin = -1, d_argpos = -1;
             FOR_TO(i, t.size()) {
-                if (t(i) > 0 && (t(i) < t(t_argmin) || t_argmin_undefined)) {
-                    t_argmin_undefined = false;
-                    t_argmin = uint(i);
+                if (d(i) > EPSILON) d_argpos = i;
+                else if (d(i) < 0) continue;
+                if (t(i) >= 0 && (t_argmin == -1 || t(i) < t(t_argmin)) && !std::isinf(t(i))) {
+                    t_argmin = int(i);
                 }
             }
             
 
             if (unlikely(isVerbose())) {
-                std::cout << "Exiting variable: " << model->variables[basic_vars[t_argmin]].getName() << " (" << basic_vars[t_argmin]
-                        << "), entering: " << model->variables[entering_var].getName() << " (" << entering_var << ")\n";
-                std::cout << "xc_b   = [" << xc_b.transpose() << "].T;\nxc_b' -= ";
-                std::cout << "(d=[" << d.transpose() << "]).T * (t=[" << t.transpose() << "]).T: " << t_argmin << "\n";
+                std::cout << "A[:,e]= " << e_print(model->A(Eigen::all, entering_var)) << ".T;\n";
+                std::cout << "xc_b  = " << e_print(xc_b) << ".T;\n";
+                std::cout << "d     = " << e_print(d) << ".T = A_B-1 * A[:,entering]; d[" << d_argpos << "]>0\n";
+                std::cout << "t     = " << e_print(t) << ".T = xc_b/d; => t[t_min=" << t_argmin << "]=";
+                if (t_argmin >= 0) {
+                    std::cout << t[t_argmin] << (t[t_argmin] > 0 ? " >" : " =") << " 0\nExiting variable: " <<
+                                 model->variables[basic_vars[t_argmin]].getName() << " (" << basic_vars[t_argmin] <<
+                                 "), entering: " << model->variables[entering_var].getName() << " (" << entering_var << ")\n";
+                } else {
+                    std::cout << "*\n";
+                }
             }
-            if (t_argmin_undefined) {
+            if (t_argmin == -1 || d_argpos == -1) {
                 // TODO: Unlimited
                 std::cout << "Problem is unlimited\n";
                 if (unlikely(isVerbose())) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
@@ -127,7 +165,9 @@ namespace Xplex {
 
             xc_b -= t[t_argmin] * d; // Changes class state
             xc_b(t_argmin) = t[t_argmin]; // Changes class state
-            if (unlikely(isVerbose())) std::cout << "xc_b'  = [" << xc_b.transpose() << "].T\n";
+            if (unlikely(isVerbose())) {
+                std::cout << "xc_b' = [" << xc_b.transpose() << "].T = xc_b - t[t_min] * d; xc_b'[t_min]=t[t_min]\n\n";
+            }
 
             MatrixXd E = MatrixXd::Identity(getBasisSize(), getBasisSize());
             E(Eigen::all, t_argmin) = -d / d(t_argmin);
@@ -138,8 +178,24 @@ namespace Xplex {
             variable_is_basic[entering_var] = true; // Changes class state
             basic_vars[t_argmin] = entering_var; // Changes class state
 
-            assert((model->A(Eigen::all, basic_vars).inverse() - A_B_m1).cwiseAbs().maxCoeff() < 0.1
-                    && "The matrix inversion method produced a different result than Eigen's inverse");
+            if constexpr (ON_DEBUG) {
+                const auto a_real_inversed = model->A(Eigen::all, basic_vars).inverse().eval();
+                const auto c = (a_real_inversed - A_B_m1).cwiseAbs().maxCoeff() < 0.001;
+                if (!c) {
+                    std::cerr << "A(:,basic_vars={";
+                    for (const auto i : basic_vars) std::cerr << " " << model->variables[i].getName();
+                    std::cerr << " }):\n" << model->A(Eigen::all, basic_vars) << "\nEIGEN (REAL) INVERSION:\n"
+                        << a_real_inversed << "\n TRICK (EXPECTED) INVERSION:\n" << A_B_m1 << "\nFROM E:\n" << E << "\n";
+                }
+                assert(c && "The matrix inversion method produced a different result than Eigen's inverse");
+
+                const auto bv = (model->A(Eigen::all, basic_vars) * xc_b - model->b).cwiseAbs().maxCoeff() < 0.001;
+                if (!bv) {
+                    std::cerr << "Computed: " << e_print(model->A(Eigen::all, basic_vars) * xc_b, 3) << "\n";
+                    std::cerr << "b limit:  " << e_print(model->b, 3) << "\n";
+                }
+                assert(bv && "This solution violated constraints!");
+            }
 
             if (unlikely(isVerbose())) std::cout << "E:\n" << E << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
         }
@@ -187,7 +243,9 @@ namespace Xplex {
     }
 
     double Xplex::getObjValue() const {
-        return model->objc.getScalar() + model_c(basic_vars).transpose() * A_B_m1 * model->b;
+        // return model->objc.getScalar() + model_c(basic_vars).transpose() * A_B_m1 * model->b;
+        const double r = model_c(basic_vars).transpose() * xc_b;
+        return model->objc.getOriginalObjectiveType() == model->objc.getObjectiveType() ? r : -r;
     }
 
     double Xplex::getValue(const Variable& v) const {
