@@ -183,7 +183,7 @@ int main(int argc, const char** argv) {
     if (verbose_it == arg.end()) DEFAULT_VERBOSITY = 0;
     else {
         arg.erase(verbose_it);
-        DEFAULT_VERBOSITY = 0;
+        DEFAULT_VERBOSITY = 5;
     }
     
     if (arg.size() == 2) {

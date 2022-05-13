@@ -1,4 +1,4 @@
-$(shell echo "#ifdef GITFLAG\nchar const *const GIT_COMMIT = \"$$(git rev-parse --short HEAD)\";\n#endif" > src/include/version.cpp.tmp; if diff -q src/include/version.cpp.tmp src/include/version.cpp >/dev/null 2>&1; then rm src/include/version.cpp.tmp; else mv src/include/version.cpp.tmp src/include/version.cpp; fi)
+$(shell echo "#include \"global.hpp\"\n\n#ifdef GITFLAG\nchar const *const GIT_COMMIT = \"$$(git rev-parse --short HEAD)\";\n#endif" > src/include/version.cpp.tmp; if diff -q src/include/version.cpp.tmp src/include/version.cpp >/dev/null 2>&1; then rm src/include/version.cpp.tmp; else mv src/include/version.cpp.tmp src/include/version.cpp; fi)
 
 #### define o compilador
 CPPC = g++
