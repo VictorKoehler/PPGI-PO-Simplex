@@ -1,10 +1,11 @@
 #include <iostream>
+#include <unordered_set>
 #include "global.hpp"
 #include "Xplex.hpp"
 
 namespace Xplex {
     static const double EPSILON = 1e-5;
-    Xplex::Xplex(const Model *model) : model(model), iterations(0), verbose(false), phase1(false) { }
+    Xplex::Xplex(const Model *model) : model(model), iterations(0), check_cycles(0), verbose(false), phase1(false) { }
 
     Xplex::Xplex(Model *model) : Xplex(const_cast<const Model *>(model)) {
         if (!model->isBuilt()) model->build();
@@ -79,6 +80,17 @@ namespace Xplex {
         return b;
     }
 
+    std::size_t calculate_hash(std::vector<uint> const& vec) {
+        std::size_t seed = vec.size();
+        for(auto x : vec) {
+            x = ((x >> 16) ^ x) * 0x45d9f3b;
+            x = ((x >> 16) ^ x) * 0x45d9f3b;
+            x = (x >> 16) ^ x;
+            seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+        return seed;
+    }
+
     void Xplex::revised_simplex() {
         if (unlikely(isVerbose())) {
             if (phase1) std::cout << "ç: " << model->c_art.transpose() << "\n";
@@ -87,6 +99,10 @@ namespace Xplex {
             std::cout << "A: [\n" << model->A << " ]\n\n";
             std::cout << "A_B-1: [\n" << A_B_m1 << " ]\n\n\n";
         }
+
+        const auto it_bef = iterations;
+        std::unordered_map<size_t, std::unordered_set<double>> past_basis;
+        uint cycles = check_cycles;
 
         while (true) {
             iterations++;
@@ -110,6 +126,22 @@ namespace Xplex {
                 std::cout << "c_N: " << model_c(non_basic_vars).transpose() << "\n";
                 std::cout << "c_B: " << model_c(basic_vars).transpose() << "\n";
                 std::cout << "A_N (aka N):\n" << model->A(Eigen::all, non_basic_vars) << "\n";
+            }
+
+            if (unlikely(isCheckingCycles())) {
+                const auto c_hash = calculate_hash(basic_vars);
+                const auto c_obj = xc_b.sum();
+                auto b_pb = past_basis.find(c_hash);
+                if (b_pb == past_basis.end()) { // absent
+                    past_basis[c_hash] = {c_obj};
+                    if (cycles < check_cycles) cycles++;
+                } else if (b_pb->second.find(c_obj) == b_pb->second.end()) { // absent
+                    b_pb->second.insert(c_obj);
+                    if (cycles < check_cycles) cycles++;
+                } else { // Cycling detected
+                    cycles--;
+                    if (cycles == 0) throw std::runtime_error("Possible cycling detected! Aborting...");
+                }
             }
 
             // std::cout << "[" << model_c(non_basic_vars).transpose() << "] - [" << model_c(basic_vars).transpose() << "] [\n" << A_B_m1 << "] [\n" << model->A(Eigen::all, non_basic_vars) << "]\n\n";
@@ -136,7 +168,7 @@ namespace Xplex {
             int t_argmin = -1, d_argpos = -1;
             FOR_TO(i, t.size()) {
                 if (d(i) > EPSILON) d_argpos = i;
-                else if (d(i) < 0) continue;
+                else if (d(i) <= 0) continue;
                 if (t(i) >= 0 && (t_argmin == -1 || t(i) < t(t_argmin)) && !std::isinf(t(i))) {
                     t_argmin = int(i);
                 }
@@ -203,6 +235,10 @@ namespace Xplex {
         if (!phase1) {
             if (unlikely(isVerbose())) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n";
             std::cout << "Solution found: z = " << getObjValue() << "\n";
+            std::cout << "After " << iterations << " iterations";
+            if (it_bef == 0) std::cout << "\n";
+            else std::cout << ", of which " << it_bef << " were on Phase I\n";
+
             std::cout << "Basic variables:";
             FOR_TO(i, basic_vars.size()) {
                 std::cout << "  " << model->variables[basic_vars[i]].getName() << "=" << xc_b(i);

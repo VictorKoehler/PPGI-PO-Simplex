@@ -169,6 +169,21 @@ void example_5() { // Exemplo Aula Anand - Análise de Sensibilidade
 void example_6_expressions();
 void example_7_expressions();
 
+bool is_arg_set(std::vector<std::string>& arg, const std::string& o) {
+    auto optit = std::find(arg.begin(), arg.end(), o);
+    if (optit == arg.end()) return false;
+    arg.erase(optit);
+    return true;
+}
+
+const std::string get_argv_set(std::vector<std::string>& arg, const std::string& o, const std::string def) {
+    auto optit = std::find(arg.begin(), arg.end(), o);
+    if (optit == arg.end()) return def;
+    const auto r = *(optit+1);
+    arg.erase(optit, optit+2);
+    return r;
+}
+
 int main(int argc, const char** argv) {
     std::cout << "XPLEX Revision " << GIT_COMMIT << "\n\nInvocation args:\n";
 
@@ -179,12 +194,8 @@ int main(int argc, const char** argv) {
     }
     std::cout << "\n";
 
-    auto verbose_it = std::find(arg.begin(), arg.end(), "-v");
-    if (verbose_it == arg.end()) DEFAULT_VERBOSITY = 0;
-    else {
-        arg.erase(verbose_it);
-        DEFAULT_VERBOSITY = 5;
-    }
+    DEFAULT_VERBOSITY = is_arg_set(arg, "-v") ? 5 : 0;
+    const uint chcycles = uint(std::atoi(get_argv_set(arg, "-c", "0").c_str()));
     
     if (arg.size() == 2) {
         Xplex::Model m;
@@ -192,6 +203,7 @@ int main(int argc, const char** argv) {
         m.print(false);
         Xplex::Xplex x(&m);
         x.setVerbose(DEFAULT_VERBOSITY >= 1);
+        x.setCheckingCycles(chcycles);
         x.solve();
     } else if (arg.size() == 1) {
         example_1();
