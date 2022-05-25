@@ -5,7 +5,7 @@
 
 namespace Xplex {
     static const double EPSILON = 1e-5;
-    Xplex::Xplex(const Model *model) : model(model), iterations(0), check_cycles(0), verbose(false), phase1(false) { }
+    Xplex::Xplex(const Model *model) : model(model), iterations(0), check_cycles(0), timelimit(0), verbose(false), phase1(false) { }
 
     Xplex::Xplex(Model *model) : Xplex(const_cast<const Model *>(model)) {
         if (!model->isBuilt()) model->build();
@@ -13,7 +13,7 @@ namespace Xplex {
 
     void Xplex::solve() {
         if (!model->isBuilt()) throw std::runtime_error("You must build the model before solving.");
-        // if (unlikely(isVerbose())) model->print();
+        // if (isVeryVerbose()) model->print();
 
         const auto m = size_t(model->b.rows());
         const auto nn = model->variables.size() - m;
@@ -27,15 +27,24 @@ namespace Xplex {
         }
 
         phase1 = model->isTwoPhaseNeeded();
+        timeStarted = TimePoint();
         if (phase1) {
-            std::cout << "Phase I started\n";
+            std::cout << "Phase I started at " << timeStarted << "\n";
             revised_simplex();
             phase1 = false;
-            std::cout << "Phase I finished\n";
+            TimePoint tpp1;
+            std::cout << "Phase I finished at " << tpp1 << "; Total clock time elapsed: "
+                      << timeStarted.diff_seconds(tpp1) << " seconds" << std::endl;
         }
-        std::cout << "Phase II started\n";
+        TimePoint tpp2s;
+        std::cout << "Phase II started at " << tpp2s << "\n";
         revised_simplex();
-        std::cout << "Phase II finished\n";
+        TimePoint tpp2;
+        std::cout << "Phase II finished at " << tpp2 << "; Total clock time elapsed: "
+                    << tpp2s.diff_seconds(tpp2) << " seconds" << std::endl;
+        if (phase1) {
+            std::cout << "Total clock time elapsed on both phases: " << timeStarted.diff_seconds(tpp2) << std::endl;
+        }
     }
 
     template<typename T>
@@ -66,6 +75,7 @@ namespace Xplex {
     }
 
     #define model_c(...) (phase1 ? model->c_art(__VA_ARGS__) : model->c(__VA_ARGS__))
+    #define isVeryVerbose() unlikely(getVerbosityLevel() >= 4)
 
     template<typename T>
     std::string e_print(T v, size_t space=5) {
@@ -92,7 +102,7 @@ namespace Xplex {
     }
 
     void Xplex::revised_simplex() {
-        if (unlikely(isVerbose())) {
+        if (isVeryVerbose()) {
             if (phase1) std::cout << "ç: " << model->c_art.transpose() << "\n";
             else std::cout << "c: " << model->c.transpose() << "\n";
             std::cout << "b: " << model->b.transpose() << "\n";
@@ -102,45 +112,50 @@ namespace Xplex {
 
         const auto it_bef = iterations;
         std::unordered_map<size_t, std::unordered_set<double>> past_basis;
-        uint cycles = check_cycles;
+        const uint max_cycles = check_cycles;
 
+        std::vector<uint> non_basic_vars; // TODO: Find a better solution
         while (true) {
             iterations++;
-            std::vector<uint> non_basic_vars; // TODO: Find a better solution
+            non_basic_vars.clear();
             non_basic_vars.reserve(getNonBasisSize());
             FOR_TO(i, variable_is_basic.size()) {
                 if (!variable_is_basic[i] && (phase1 || model->variables[i].getType() != Variable::Type::Artificial))
                     non_basic_vars.push_back(i);
             } // non_basic_vars := j=non_basic_vars[i] -> v=model->variables[j] such that v is non basic
 
-            if (unlikely(isVerbose())) {
-                std::cout << "=== ITERATION #" << iterations << " (PHASE I" << (phase1 ? "" : "I") << ") ===\n";
-                std::cout << "Current Z: " << std::to_string(getObjValue()) << "\n";
-                std::cout << "Basic Variables: ";
-                for (const auto i : basic_vars) std::cout << " " << model->variables[i].getName() << "(" << i << ":" << model_c(i) << ")";
-                std::cout << "\n";
-                std::cout << "Non-Basic Variables:";
-                for (const auto i : non_basic_vars) std::cout << " " << model->variables[i].getName() << "(" << i << ":" << model_c(i) << ")";
-                std::cout << "\n\n";
-
-                std::cout << "c_N: " << model_c(non_basic_vars).transpose() << "\n";
-                std::cout << "c_B: " << model_c(basic_vars).transpose() << "\n";
-                std::cout << "A_N (aka N):\n" << model->A(Eigen::all, non_basic_vars) << "\n";
+            if (unlikely(iterations % 1000 == 0)) {
+                auto et = timeStarted.diff_seconds();
+                if (isVerbose()) {
+                    std::cout << "=== ITERATION #" << iterations << " (PHASE I" << (phase1 ? ", " : "I, ") << et
+                              << " seconds elapsed); Current Z = " << std::to_string(getObjValue()) << " ===" << std::endl;
+                }
+                if (isTimeLimited() && et > double(timelimit)) {
+                    std::cout << "TIME LIMIT REACHED!" << std::endl;
+                    if (isVerbose()) print_statedbg(non_basic_vars, true);
+                    return;
+                }
+            } else if (isVeryVerbose()) {
+                print_statedbg(non_basic_vars);
             }
 
-            if (unlikely(isCheckingCycles())) {
+            if (isCheckingCycles()) {
                 const auto c_hash = calculate_hash(basic_vars);
                 const auto c_obj = xc_b.sum();
                 auto b_pb = past_basis.find(c_hash);
                 if (b_pb == past_basis.end()) { // absent
                     past_basis[c_hash] = {c_obj};
-                    if (cycles < check_cycles) cycles++;
+                    if (check_cycles < max_cycles) check_cycles++;
                 } else if (b_pb->second.find(c_obj) == b_pb->second.end()) { // absent
                     b_pb->second.insert(c_obj);
-                    if (cycles < check_cycles) cycles++;
+                    if (check_cycles < max_cycles) check_cycles++;
                 } else { // Cycling detected
-                    cycles--;
-                    if (cycles == 0) throw std::runtime_error("Possible cycling detected! Aborting...");
+                    check_cycles--;
+                    if (check_cycles == 0) {
+                        if (isVerbose()) std::cout << "CYCLING!\n";
+                        if (isVerbose()) print_statedbg(non_basic_vars, true);
+                        throw std::runtime_error("Possible cycling detected! Aborting...");
+                    }
                 }
             }
 
@@ -154,11 +169,12 @@ namespace Xplex {
             auto coeffz_argmax = eigen_arg_first_positive(coeffz); // Bland's rule
 
             const auto entering_var = non_basic_vars[coeffz_argmax];
-            if (unlikely(isVerbose())) {
+            if (isVeryVerbose()) {
                 std::cout << "Z coeff NB: " << e_print(coeffz) << ":=> c[cin=" << coeffz_argmax << "]=" << coeffz[coeffz_argmax] << "\n";
             }
             if (coeffz[coeffz_argmax] <= 0) {
                 // TODO: Finish routine
+                if (isVerbose()) print_statedbg(non_basic_vars, true);
                 std::cout << "No coefficient improves the current solution. Exiting...\n";
                 break;
             }
@@ -175,7 +191,7 @@ namespace Xplex {
             }
             
 
-            if (unlikely(isVerbose())) {
+            if (isVeryVerbose()) {
                 std::cout << "A[:,e]= " << e_print(model->A(Eigen::all, entering_var)) << ".T;\n";
                 std::cout << "xc_b  = " << e_print(xc_b) << ".T;\n";
                 std::cout << "d     = " << e_print(d) << ".T = A_B-1 * A[:,entering]; d[" << d_argpos << "]>0\n";
@@ -191,13 +207,14 @@ namespace Xplex {
             if (t_argmin == -1 || d_argpos == -1) {
                 // TODO: Unlimited
                 std::cout << "Problem is unlimited\n";
-                if (unlikely(isVerbose())) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
+                if (isVerbose()) print_statedbg(non_basic_vars, true);
+                if (isVeryVerbose()) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
                 return;
             }
 
             xc_b -= t[t_argmin] * d; // Changes class state
             xc_b(t_argmin) = t[t_argmin]; // Changes class state
-            if (unlikely(isVerbose())) {
+            if (isVeryVerbose()) {
                 std::cout << "xc_b' = [" << xc_b.transpose() << "].T = xc_b - t[t_min] * d; xc_b'[t_min]=t[t_min]\n\n";
             }
 
@@ -214,6 +231,7 @@ namespace Xplex {
                 const auto a_real_inversed = model->A(Eigen::all, basic_vars).inverse().eval();
                 const auto c = (a_real_inversed - A_B_m1).cwiseAbs().maxCoeff() < 0.001;
                 if (!c) {
+                    print_statedbg(non_basic_vars, true);
                     std::cerr << "A(:,basic_vars={";
                     for (const auto i : basic_vars) std::cerr << " " << model->variables[i].getName();
                     std::cerr << " }):\n" << model->A(Eigen::all, basic_vars) << "\nEIGEN (REAL) INVERSION:\n"
@@ -223,17 +241,18 @@ namespace Xplex {
 
                 const auto bv = (model->A(Eigen::all, basic_vars) * xc_b - model->b).cwiseAbs().maxCoeff() < 0.001;
                 if (!bv) {
+                    print_statedbg(non_basic_vars, true);
                     std::cerr << "Computed: " << e_print(model->A(Eigen::all, basic_vars) * xc_b, 3) << "\n";
                     std::cerr << "b limit:  " << e_print(model->b, 3) << "\n";
                 }
                 assert(bv && "This solution violated constraints!");
             }
 
-            if (unlikely(isVerbose())) std::cout << "E:\n" << E << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
+            if (isVeryVerbose()) std::cout << "E:\n" << E << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
         }
 
         if (!phase1) {
-            if (unlikely(isVerbose())) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n";
+            if (isVeryVerbose()) print_statedbg(non_basic_vars);;
             std::cout << "Solution found: z = " << getObjValue() << "\n";
             std::cout << "After " << iterations << " iterations";
             if (it_bef == 0) std::cout << "\n";
@@ -276,6 +295,27 @@ namespace Xplex {
                 std::cout << b+closest_neg << " <= b <= " << b+closest_pos << "\n";
             }
         }
+    }
+
+
+
+    void Xplex::print_statedbg(std::vector<uint>& non_basic_vars, bool flushout) {
+        auto et = timeStarted.diff_seconds();
+        std::cout << "=== ITERATION #" << iterations << " (PHASE I" << (phase1 ? ", " : "I, ") << et << " seconds elapsed) ===\n";
+        std::cout << "Current Z: " << std::to_string(getObjValue()) << "\n";
+        if (isCheckingCycles()) std::cout << "Cycling Tolerance Counter: " << check_cycles << "\n";
+        std::cout << "Basic Variables: ";
+        for (const auto i : basic_vars) std::cout << " " << model->variables[i].getName() << "(" << i << ":" << model_c(i) << ")";
+        std::cout << "\n";
+        std::cout << "Non-Basic Variables:";
+        for (const auto i : non_basic_vars) std::cout << " " << model->variables[i].getName() << "(" << i << ":" << model_c(i) << ")";
+        std::cout << "\n\n";
+
+        std::cout << "c_N: " << model_c(non_basic_vars).transpose() << "\n";
+        std::cout << "c_B: " << model_c(basic_vars).transpose() << "\n";
+        std::cout << "A_N (aka N):\n" << model->A(Eigen::all, non_basic_vars) << "\n";
+
+        if (flushout) std::cout << std::endl;
     }
 
     double Xplex::getObjValue() const {

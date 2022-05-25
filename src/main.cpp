@@ -194,15 +194,17 @@ int main(int argc, const char** argv) {
     }
     std::cout << "\n";
 
-    DEFAULT_VERBOSITY = is_arg_set(arg, "-v") ? 5 : 0;
-    const uint chcycles = uint(std::atoi(get_argv_set(arg, "-c", "0").c_str()));
-    
+    DEFAULT_VERBOSITY = std::stoi(get_argv_set(arg, "-v", "0"));
+    const uint chcycles = uint(std::stoi(get_argv_set(arg, "-c", "0")));
+    const uint timelim = uint(std::stoi(get_argv_set(arg, "-t", "0")));
+
     if (arg.size() == 2) {
         Xplex::Model m;
         Xplex::LPParserXplexModel(m, arg[1]).parse();
         m.print(false);
         Xplex::Xplex x(&m);
-        x.setVerbose(DEFAULT_VERBOSITY >= 1);
+        if (timelim > 0) x.setTimeLimit(uint(timelim));
+        x.setVerbosityLevel(DEFAULT_VERBOSITY);
         x.setCheckingCycles(chcycles);
         x.solve();
     } else if (arg.size() == 1) {

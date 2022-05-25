@@ -10,9 +10,9 @@ ifeq ($(DEBUG), 1)
    endif
 else
    ifeq ($(SYMBOLS), 1)
-      lCCOPTFLAGS = -O5 -march=native -g3 -DNDEBUG
+      lCCOPTFLAGS = -Ofast -march=native -g3 -DNDEBUG
    else
-      lCCOPTFLAGS = -O5 -march=native -DNDEBUG
+      lCCOPTFLAGS = -Ofast -march=native -DNDEBUG
    endif
 endif
 
