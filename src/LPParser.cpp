@@ -331,7 +331,7 @@ namespace Xplex {
             std::string kn;
             double lb = NAN, ub = NAN;
 
-            if (k.find(" free") != k.npos) {
+            if (str_to_uppercase(k).find(" FREE") != k.npos) {
                 const auto kn = read_name(k);
                 lb = -INFINITY;
                 ub = +INFINITY;
