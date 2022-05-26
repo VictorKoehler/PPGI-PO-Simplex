@@ -52,8 +52,8 @@ namespace Xplex {
         }
     }
 
-    template<typename T>
-    inline auto eigen_arg_first_positive(T &z) {
+    template<typename T, typename TR=double>
+    inline TR eigen_arg_first_positive(const T &z) {
         FOR_TO(i, z.size()) {
             if (z(i) > EPSILON) return i;
         }
@@ -61,8 +61,8 @@ namespace Xplex {
         return dummy;
     }
 
-    template<typename T>
-    inline auto eigen_argmax(T &z) {
+    template<typename T, typename TR=double>
+    inline TR eigen_argmax(const T &z) {
         decltype(z.size()) argmax = 0;
         FOR_TO(i, z.size()) {
             if (z(i) > z(argmax)) argmax = i;
@@ -70,8 +70,8 @@ namespace Xplex {
         return argmax;
     }
 
-    template<typename T>
-    inline auto eigen_argmin(T &z) {
+    template<typename T, typename TR=double>
+    inline TR eigen_argmin(const T &z) {
         decltype(z.size()) argmin = 0;
         FOR_TO(i, z.size()) {
             if (z(i) < z(argmin)) argmin = i;
@@ -168,7 +168,7 @@ namespace Xplex {
             // std::cout << "[" << model_c(non_basic_vars).transpose() << "] - [" << (model_c(basic_vars).transpose() * A_B_m1) << "] [\n" << model->A(Eigen::all, non_basic_vars) << "]\n\n";
             // std::cout << "[" << model_c(non_basic_vars).transpose() << "] - [" << (model_c(basic_vars).transpose() * A_B_m1 * model->A(Eigen::all, non_basic_vars)) << "]\n\n";
 
-            auto coeffz = model_c(non_basic_vars).transpose() - model_c(basic_vars).transpose() * A_B_m1 * model->A(Eigen::all, non_basic_vars);
+            Eigen::RowVectorXd coeffz = model_c(non_basic_vars).transpose() - model_c(basic_vars).transpose() * A_B_m1 * model->A(Eigen::all, non_basic_vars);
 
             // auto coeffz_argmax = eigen_argmax(coeffz); // Usual rule
             auto coeffz_argmax = eigen_arg_first_positive(coeffz); // Bland's rule
@@ -184,8 +184,8 @@ namespace Xplex {
                 break;
             }
 
-            auto d = A_B_m1 * model->A(Eigen::all, entering_var);
-            auto t = (xc_b.array() / d.array()).eval();
+            Eigen::VectorXd d = A_B_m1 * model->A(Eigen::all, entering_var);
+            Eigen::ArrayXd t = (xc_b.array() / d.array()).eval();
             int t_argmin = -1, d_argpos = -1;
             FOR_TO(i, t.size()) {
                 if (d(i) > EPSILON) d_argpos = i;
@@ -234,7 +234,7 @@ namespace Xplex {
 
             if constexpr (ON_DEBUG) {
                 const auto a_real_inversed = model->A(Eigen::all, basic_vars).inverse().eval();
-                const auto c = (a_real_inversed - A_B_m1).cwiseAbs().maxCoeff() < 0.001;
+                const auto c = (a_real_inversed - A_B_m1).cwiseAbs().maxCoeff() < 0.01;
                 if (!c) {
                     print_statedbg(non_basic_vars, true);
                     std::cerr << "A(:,basic_vars={";
@@ -273,12 +273,12 @@ namespace Xplex {
                 std::cout << model->variables[i].getName() << " = ";
             }
 
-            const auto y = model_c(basic_vars).transpose() * A_B_m1;
+            const Eigen::RowVectorXd y = model_c(basic_vars).transpose() * A_B_m1;
             std::cout << "0\nDual variables: y* = [" << y << "]\n\n";
 
             std::cout << "Range Sensibility:\n";
             FOR_TO(i, xc_b.size()) {
-                const auto delta = (-xc_b.array() / A_B_m1(Eigen::all, i).array()).eval();
+                const Eigen::ArrayXd delta = (-xc_b.array() / A_B_m1(Eigen::all, i).array()).eval();
                 double closest_neg = -INFINITY, closest_pos = +INFINITY;
                 for (const double v : delta) {
                     if (v < 0) {
