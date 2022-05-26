@@ -14,8 +14,8 @@ namespace Xplex {
         std::vector<uint> basic_vars; // where j=basic_vars[i] points to model->variables[j]
         std::vector<bool> variable_is_basic; // where variable_is_basic[i] points to model->variables[j]
 
-        void revised_simplex();
-        void print_statedbg(std::vector<uint>& non_basic_vars, bool flushout = false);
+        bool revised_simplex();
+        void print_statedbg(const std::vector<uint>& non_basic_vars, bool flushout = false) const;
 
         public:
         Xplex(Model *model);

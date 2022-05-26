@@ -28,21 +28,26 @@ namespace Xplex {
 
         phase1 = model->isTwoPhaseNeeded();
         timeStarted = TimePoint();
+        bool cont = true;
         if (phase1) {
             std::cout << "Phase I started at " << timeStarted << "\n";
-            revised_simplex();
+            cont = revised_simplex();
             phase1 = false;
             TimePoint tpp1;
             std::cout << "Phase I finished at " << tpp1 << "; Total clock time elapsed: "
                       << timeStarted.diff_seconds(tpp1) << " seconds" << std::endl;
         }
-        TimePoint tpp2s;
-        std::cout << "Phase II started at " << tpp2s << "\n";
-        revised_simplex();
         TimePoint tpp2;
-        std::cout << "Phase II finished at " << tpp2 << "; Total clock time elapsed: "
-                    << tpp2s.diff_seconds(tpp2) << " seconds" << std::endl;
-        if (phase1) {
+        if (cont) {
+            TimePoint tpp2s;
+            std::cout << "Phase II started at " << tpp2s << "\n";
+            revised_simplex();
+            tpp2 = TimePoint();
+            std::cout << "Phase II finished at " << tpp2 << "; Total clock time elapsed: "
+                        << tpp2s.diff_seconds(tpp2) << " seconds" << std::endl;
+        }
+
+        if (model->isTwoPhaseNeeded()) {
             std::cout << "Total clock time elapsed on both phases: " << timeStarted.diff_seconds(tpp2) << std::endl;
         }
     }
@@ -101,7 +106,7 @@ namespace Xplex {
         return seed;
     }
 
-    void Xplex::revised_simplex() {
+    bool Xplex::revised_simplex() {
         if (isVeryVerbose()) {
             if (phase1) std::cout << "ç: " << model->c_art.transpose() << "\n";
             else std::cout << "c: " << model->c.transpose() << "\n";
@@ -133,7 +138,7 @@ namespace Xplex {
                 if (isTimeLimited() && et > double(timelimit)) {
                     std::cout << "TIME LIMIT REACHED!" << std::endl;
                     if (isVerbose()) print_statedbg(non_basic_vars, true);
-                    return;
+                    return false;
                 }
             } else if (isVeryVerbose()) {
                 print_statedbg(non_basic_vars);
@@ -174,8 +179,8 @@ namespace Xplex {
             }
             if (coeffz[coeffz_argmax] <= 0) {
                 // TODO: Finish routine
-                if (isVerbose()) print_statedbg(non_basic_vars, true);
                 std::cout << "No coefficient improves the current solution. Exiting...\n";
+                if (getVerbosityLevel() >= 2) print_statedbg(non_basic_vars, true);
                 break;
             }
 
@@ -209,7 +214,7 @@ namespace Xplex {
                 std::cout << "Problem is unlimited\n";
                 if (isVerbose()) print_statedbg(non_basic_vars, true);
                 if (isVeryVerbose()) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
-                return;
+                return false;
             }
 
             xc_b -= t[t_argmin] * d; // Changes class state
@@ -295,11 +300,12 @@ namespace Xplex {
                 std::cout << b+closest_neg << " <= b <= " << b+closest_pos << "\n";
             }
         }
+        return true;
     }
 
 
 
-    void Xplex::print_statedbg(std::vector<uint>& non_basic_vars, bool flushout) {
+    void Xplex::print_statedbg(const std::vector<uint>& non_basic_vars, bool flushout) const {
         auto et = timeStarted.diff_seconds();
         std::cout << "=== ITERATION #" << iterations << " (PHASE I" << (phase1 ? ", " : "I, ") << et << " seconds elapsed) ===\n";
         std::cout << "Current Z: " << std::to_string(getObjValue()) << "\n";
