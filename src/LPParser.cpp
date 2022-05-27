@@ -332,7 +332,7 @@ namespace Xplex {
             double lb = NAN, ub = NAN;
 
             if (str_to_uppercase(k).find(" FREE") != k.npos) {
-                const auto kn = read_name(k);
+                kn = read_name(k);
                 lb = -INFINITY;
                 ub = +INFINITY;
             } else {
