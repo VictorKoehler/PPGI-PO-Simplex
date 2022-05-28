@@ -201,12 +201,23 @@ int main(int argc, const char** argv) {
     if (arg.size() == 2) {
         Xplex::Model m;
         Xplex::LPParserXplexModel(m, arg[1]).parse();
+        auto vsz = m.getVariables().size(), csz = m.getConstraints().size();
         m.print(false);
+
         Xplex::Xplex x(&m);
         if (timelim > 0) x.setTimeLimit(uint(timelim));
         x.setVerbosityLevel(DEFAULT_VERBOSITY);
         x.setCheckingCycles(chcycles);
-        x.solve();
+        double timeSpent = x.solve();
+
+        double v;
+        try {
+            v = x.getObjValue();
+        } catch (...) {
+            v = NAN;
+        }
+        std::cout << "\n\n\"" << arg[1]<<"\"," << vsz<<"," << csz<<"," << chcycles<<"," << timelim<<"," << x.getStatus()<<","
+                  << v<<"," << timeSpent<<"," << x.getNumIterations() << "\n";
     } else if (arg.size() == 1) {
         example_1();
         example_2();

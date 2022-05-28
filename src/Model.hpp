@@ -58,5 +58,8 @@ namespace Xplex {
 
         VariableRef getVariable(const std::string& name);
         inline ObjectiveFunction& objective() { return objc; }
+
+        const std::vector<Variable>& getVariables() const { return variables; }
+        const std::vector<Constraint>& getConstraints() const { return constraints; }
     };
 }

@@ -5,13 +5,14 @@
 
 namespace Xplex {
     static const double EPSILON = 1e-5;
-    Xplex::Xplex(const Model *model) : model(model), iterations(0), check_cycles(0), timelimit(0), verbose(false), phase1(false) { }
+    Xplex::Xplex(const Model *model) : model(model), iterations(0), check_cycles(0), timelimit(0),
+                                       verbose(false), phase1(false), status(Status::UNSOLVED) { }
 
     Xplex::Xplex(Model *model) : Xplex(const_cast<const Model *>(model)) {
         if (!model->isBuilt()) model->build();
     }
 
-    void Xplex::solve() {
+    double Xplex::solve() {
         if (!model->isBuilt()) throw std::runtime_error("You must build the model before solving.");
         // if (isVeryVerbose()) model->print();
 
@@ -28,28 +29,30 @@ namespace Xplex {
 
         phase1 = model->isTwoPhaseNeeded();
         timeStarted = TimePoint();
-        bool cont = true;
         if (phase1) {
             std::cout << "Phase I started at " << timeStarted << "\n";
-            cont = revised_simplex();
+            status = revised_simplex();
+            if (status == OPTIMAL) status = UNSOLVED;
             phase1 = false;
             TimePoint tpp1;
-            std::cout << "Phase I finished at " << tpp1 << "; Total clock time elapsed: "
+            std::cout << "Phase I finished at " << tpp1 << "; Iterations: " << iterations << "; Total clock time elapsed: "
                       << timeStarted.diff_seconds(tpp1) << " seconds" << std::endl;
         }
         TimePoint tpp2;
-        if (cont) {
+        if (status == UNSOLVED) {
             TimePoint tpp2s;
             std::cout << "Phase II started at " << tpp2s << "\n";
-            revised_simplex();
+            status = revised_simplex();
             tpp2 = TimePoint();
-            std::cout << "Phase II finished at " << tpp2 << "; Total clock time elapsed: "
+            std::cout << "Phase II finished at " << tpp2 << "; Iterations: " << iterations << "; Total clock time elapsed: "
                         << tpp2s.diff_seconds(tpp2) << " seconds" << std::endl;
         }
 
+        double total = timeStarted.diff_seconds(tpp2);
         if (model->isTwoPhaseNeeded()) {
-            std::cout << "Total clock time elapsed on both phases: " << timeStarted.diff_seconds(tpp2) << std::endl;
+            std::cout << "Total clock time elapsed on both phases: " << total << std::endl;
         }
+        return total;
     }
 
     template<typename T, typename TR=double>
@@ -106,7 +109,7 @@ namespace Xplex {
         return seed;
     }
 
-    bool Xplex::revised_simplex() {
+    Xplex::Status Xplex::revised_simplex() {
         if (isVeryVerbose()) {
             if (phase1) std::cout << "ç: " << model->c_art.transpose() << "\n";
             else std::cout << "c: " << model->c.transpose() << "\n";
@@ -138,7 +141,7 @@ namespace Xplex {
                 if (isTimeLimited() && et > double(timelimit)) {
                     std::cout << "TIME LIMIT REACHED!" << std::endl;
                     if (isVerbose()) print_statedbg(non_basic_vars, true);
-                    return false;
+                    return Status::ABORTED_TIME_LIMIT;
                 }
             } else if (isVeryVerbose()) {
                 print_statedbg(non_basic_vars);
@@ -159,7 +162,8 @@ namespace Xplex {
                     if (check_cycles == 0) {
                         if (isVerbose()) std::cout << "CYCLING!\n";
                         if (isVerbose()) print_statedbg(non_basic_vars, true);
-                        throw std::runtime_error("Possible cycling detected! Aborting...");
+                        // throw std::runtime_error("Possible cycling detected! Aborting...");
+                        return ABORTED_CYCLING;
                     }
                 }
             }
@@ -210,11 +214,10 @@ namespace Xplex {
                 }
             }
             if (t_argmin == -1 || d_argpos == -1) {
-                // TODO: Unlimited
                 std::cout << "Problem is unlimited\n";
                 if (isVerbose()) print_statedbg(non_basic_vars, true);
                 if (isVeryVerbose()) std::cout << "\nA_B-1:\n" << A_B_m1 << "\n\n\n";
-                return false;
+                return Status::UNBOUNDED;
             }
 
             xc_b -= t[t_argmin] * d; // Changes class state
@@ -300,7 +303,7 @@ namespace Xplex {
                 std::cout << b+closest_neg << " <= b <= " << b+closest_pos << "\n";
             }
         }
-        return true;
+        return Status::OPTIMAL;
     }
 
 
