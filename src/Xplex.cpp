@@ -118,6 +118,8 @@ namespace Xplex {
             std::cout << "A_B-1: [\n" << A_B_m1 << " ]\n\n\n";
         }
 
+        uint iteration_step_print = model->constraints.size() < 400 ? 10000u : uint(std::min(1e5, std::max(5.0, 7e5/(double(model->constraints.size())-400))));
+
         const auto it_bef = iterations;
         std::unordered_map<size_t, std::unordered_set<double>> past_basis;
         const uint max_cycles = check_cycles;
@@ -132,8 +134,10 @@ namespace Xplex {
                     non_basic_vars.push_back(i);
             } // non_basic_vars := j=non_basic_vars[i] -> v=model->variables[j] such that v is non basic
 
-            if (unlikely(iterations % 1000 == 0)) {
+            if (unlikely(iterations % iteration_step_print == 0)) {
                 auto et = timeStarted.diff_seconds();
+                if (iterations == iteration_step_print) iteration_step_print = std::max(5u, uint(60.0*double(iterations)/et));
+
                 if (isVerbose()) {
                     std::cout << "=== ITERATION #" << iterations << " (PHASE I" << (phase1 ? ", " : "I, ") << et
                               << " seconds elapsed); Current Z = " << std::to_string(getObjValue()) << " ===" << std::endl;
