@@ -32,16 +32,17 @@ namespace Xplex {
         if (phase1) {
             std::cout << "Phase I started at " << timeStarted << "\n";
             status = revised_simplex();
-            if (status == OPTIMAL) status = UNSOLVED;
-            phase1 = false;
             TimePoint tpp1;
             std::cout << "Phase I finished at " << tpp1 << "; Iterations: " << iterations << "; Total clock time elapsed: "
                       << timeStarted.diff_seconds(tpp1) << " seconds" << std::endl;
+            if (status == OPTIMAL) status = std::abs(getObjValue()) < 1e-8 ? UNSOLVED : INFEASIBLE;
+            if (status == INFEASIBLE) std::cout << "Problem is infeasible: Z=" << getObjValue() << "\n";
+            phase1 = false;
         }
         TimePoint tpp2;
         if (status == UNSOLVED) {
             TimePoint tpp2s;
-            std::cout << "Phase II started at " << tpp2s << "\n";
+            std::cout << "Phase II started at " << tpp2s << " with Z=" << getObjValue() << "\n";
             status = revised_simplex();
             tpp2 = TimePoint();
             std::cout << "Phase II finished at " << tpp2 << "; Iterations: " << iterations << "; Total clock time elapsed: "

@@ -5,7 +5,7 @@
 namespace Xplex {
     class Xplex {
         public:
-        enum Status { UNSOLVED, OPTIMAL, UNBOUNDED, ABORTED_TIME_LIMIT, ABORTED_CYCLING };
+        enum Status { UNSOLVED, OPTIMAL, UNBOUNDED, ABORTED_TIME_LIMIT, ABORTED_CYCLING, INFEASIBLE };
 
         protected:
         const Model *model;
