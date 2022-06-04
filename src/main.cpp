@@ -199,6 +199,7 @@ int main(int argc, const char** argv) {
     const uint timelim = uint(std::stoi(get_argv_set(arg, "-t", "0")));
 
     if (arg.size() == 2) {
+        std::cout << "Now: " << TimePoint() << std::endl;
         Xplex::Model m;
         Xplex::LPParserXplexModel(m, arg[1]).parse();
         auto vsz = m.getVariables().size(), csz = m.getConstraints().size();

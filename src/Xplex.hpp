@@ -9,7 +9,7 @@ namespace Xplex {
 
         protected:
         const Model *model;
-        uint iterations, check_cycles, timelimit, verbose;
+        uint iterations, iteration_step_print, check_cycles, timelimit, verbose;
         bool phase1;
         Status status;
         TimePoint timeStarted;

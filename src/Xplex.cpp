@@ -5,7 +5,7 @@
 
 namespace Xplex {
     static const double EPSILON = 1e-5;
-    Xplex::Xplex(const Model *model) : model(model), iterations(0), check_cycles(0), timelimit(0),
+    Xplex::Xplex(const Model *model) : model(model), iterations(0), iteration_step_print(1), check_cycles(0), timelimit(0),
                                        verbose(false), phase1(false), status(Status::UNSOLVED) { }
 
     Xplex::Xplex(Model *model) : Xplex(const_cast<const Model *>(model)) {
@@ -26,6 +26,12 @@ namespace Xplex {
             basic_vars.push_back(nn + i);
             variable_is_basic.push_back(true);
         }
+
+        iteration_step_print = model->constraints.size() < 400 ? 10000u : uint(std::min(1e5, std::max(5.0, 4e5/(double(model->constraints.size())-400))));
+        if (model->constraints.size() > 10000) {
+            iteration_step_print /= 4;
+        }
+        if (getVerbosityLevel() >= 1) std::cout << "Printing every " << iteration_step_print << " iterations\n";
 
         phase1 = model->isTwoPhaseNeeded();
         timeStarted = TimePoint();
@@ -119,7 +125,6 @@ namespace Xplex {
             std::cout << "A_B-1: [\n" << A_B_m1 << " ]\n\n\n";
         }
 
-        uint iteration_step_print = model->constraints.size() < 400 ? 10000u : uint(std::min(1e5, std::max(5.0, 7e5/(double(model->constraints.size())-400))));
 
         const auto it_bef = iterations;
         std::unordered_map<size_t, std::unordered_set<double>> past_basis;
@@ -189,7 +194,7 @@ namespace Xplex {
             if (coeffz[coeffz_argmax] <= 0) {
                 // TODO: Finish routine
                 std::cout << "No coefficient improves the current solution. Exiting...\n";
-                if (getVerbosityLevel() >= 2) print_statedbg(non_basic_vars, true);
+                if (getVerbosityLevel() >= 2 && getVerbosityLevel() < 4) print_statedbg(non_basic_vars, true);
                 break;
             }
 
